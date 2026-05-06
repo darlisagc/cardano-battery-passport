@@ -30,7 +30,7 @@ import os
 import sys
 from typing import Callable
 
-from dotenv import load_dotenv
+from dotenv import find_dotenv, load_dotenv, set_key
 from pycardano import (
     ExtendedSigningKey,
     Transaction,
@@ -156,9 +156,7 @@ def main() -> None:
     tx_hash, dh = emitir_via_sdk(args.ator, dict(os.environ), mnemonic)
     proxima_chave = PROXIMO_ATOR_ENV[args.ator]
 
-    # Imprime tx_hash + data_hash (este ultimo e usado pelo
-    # verificador_misto como hint quando o pack veio da Opcao B/C —
-    # guarde como DATA_HASH_PACK no .env quando for `pack`).
+    # Imprime tx_hash + data_hash e atualiza .env automaticamente.
     print("OK - credencial publicada em Cardano preprod.")
     print(f"  tx_hash:        {tx_hash}")
     print(f"  data_hash:      {dh}")
@@ -166,7 +164,19 @@ def main() -> None:
         f"  CardanoScan:    https://preprod.cardanoscan.io/transaction/{tx_hash}"
     )
     print()
-    print(f"Proximo passo: cole no .env como  {proxima_chave}={tx_hash}")
+
+    # Auto-atualiza .env (sem aspas, no formato existente)
+    env_path = find_dotenv(usecwd=True) or ".env"
+    atualizadas = [f"{proxima_chave}={tx_hash}"]
+    set_key(env_path, proxima_chave, tx_hash, quote_mode="never")
+    if args.ator == "pack":
+        set_key(env_path, "TX_HASH_PACK", tx_hash, quote_mode="never")
+        set_key(env_path, "DATA_HASH_PACK", dh, quote_mode="never")
+        atualizadas.append(f"TX_HASH_PACK={tx_hash}")
+        atualizadas.append(f"DATA_HASH_PACK={dh}")
+    print("✓ .env atualizado:")
+    for linha in atualizadas:
+        print(f"    {linha}")
 
 
 if __name__ == "__main__":

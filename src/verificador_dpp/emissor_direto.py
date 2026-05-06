@@ -31,7 +31,7 @@ import os
 import sys
 
 from blockfrost import ApiUrls
-from dotenv import load_dotenv
+from dotenv import find_dotenv, load_dotenv, set_key
 from pycardano import (
     AuxiliaryData,
     BlockFrostChainContext,
@@ -156,9 +156,9 @@ def main() -> None:
     tx_hash, dh = emitir_direto(args.ator, dict(os.environ), mnemonic, project_id)
     proxima_chave = PROXIMO_ATOR_ENV[args.ator]
 
-    # Imprime resultado e instrui o aluno a atualizar o .env para
-    # encadear o proximo ator. data_hash e impresso para uso com a
-    # URL publica do UVerify ou como hint do verificador_misto.
+    # Imprime resultado e atualiza .env automaticamente para encadear
+    # o proximo ator. data_hash tambem vai pro .env (para a URL UVerify
+    # ou como hint do verificador_misto).
     print("OK - tx submetida em Cardano preprod.")
     print(f"  tx_hash:        {tx_hash}")
     print(f"  data_hash:      {dh}")
@@ -166,10 +166,19 @@ def main() -> None:
         f"  CardanoScan:    https://preprod.cardanoscan.io/transaction/{tx_hash}"
     )
     print()
-    print(f"Proximo passo: cole no .env como  {proxima_chave}={tx_hash}")
+
+    # Auto-atualiza .env (sem aspas, no formato existente)
+    env_path = find_dotenv(usecwd=True) or ".env"
+    atualizadas = [f"{proxima_chave}={tx_hash}"]
+    set_key(env_path, proxima_chave, tx_hash, quote_mode="never")
     if args.ator == "pack":
-        print(f"             e tambem  TX_HASH_PACK={tx_hash}")
-        print(f"             e tambem  DATA_HASH_PACK={dh}")
+        set_key(env_path, "TX_HASH_PACK", tx_hash, quote_mode="never")
+        set_key(env_path, "DATA_HASH_PACK", dh, quote_mode="never")
+        atualizadas.append(f"TX_HASH_PACK={tx_hash}")
+        atualizadas.append(f"DATA_HASH_PACK={dh}")
+    print("✓ .env atualizado:")
+    for linha in atualizadas:
+        print(f"    {linha}")
 
 
 if __name__ == "__main__":
