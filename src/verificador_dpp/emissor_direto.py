@@ -14,6 +14,14 @@ Pre-requisitos no .env (ver .env.example):
     BLOCKFROST_PROJECT_ID  projeto preprod no blockfrost.io
     WALLET_MNEMONIC        24 palavras (TESTNET ONLY)
     ATOR1_TX, ATOR2_TX...  preenchidos sequencialmente apos cada emissao
+
+Fluxo da emissao (cada `--ator <X>`):
+    1. Carregar payload DPP do ator       (_payloads.py)
+    2. Derivar carteira HD do mnemonico   (wallet.py)
+    3. Conectar ao Blockfrost preprod
+    4. Construir tx self-pay com metadata
+    5. Assinar com a chave de pagamento
+    6. Submeter a rede preprod
 """
 
 from __future__ import annotations
@@ -44,31 +52,68 @@ METADATA_LABEL = 1990
 def emitir_direto(
     ator: str, env: dict[str, str], mnemonic: str, project_id: str
 ) -> str:
+    """Emite a credencial DPP do ator informado e devolve o tx hash."""
+
+    # ----------------------------------------------------------------
+    # Passo 1 — Construir o payload DPP do ator escolhido.
+    # `_payloads.py` contem os dados de cada ator (origem, celula,
+    # pack, reciclagem) seguindo o template digitalProductPassport.
+    # Atores 2-4 ainda exigem ATOR<N>_TX no env (para encadear).
+    # ----------------------------------------------------------------
     payload, _serial, _gtin = ATORES[ator](env)
+
+    # ----------------------------------------------------------------
+    # Passo 2 — Carregar a carteira HD a partir do mnemonico.
+    # Deriva chave de pagamento + endereco preprod via CIP-1852
+    # (mesmo caminho que Eternl/Lace usam).
+    # ----------------------------------------------------------------
     payment_skey, address = carregar_carteira(mnemonic)
 
+    # ----------------------------------------------------------------
+    # Passo 3 — Conectar ao Blockfrost preprod.
+    # `BlockFrostChainContext` e a abstracao do PyCardano que
+    # consulta UTxOs e submete transacoes via API do Blockfrost.
+    # ----------------------------------------------------------------
     context = BlockFrostChainContext(
         project_id=project_id,
         base_url=ApiUrls.preprod.value,
     )
 
+    # ----------------------------------------------------------------
+    # Passo 4 — Construir a transacao com TransactionBuilder.
+    #   - input:           UTxOs encontrados no nosso endereco
+    #   - output:          2 ADA voltam para nos mesmos (self-pay)
+    #   - auxiliary_data:  payload DPP como metadata nativa Cardano
+    #                      sob o label 1990
+    # ----------------------------------------------------------------
     builder = TransactionBuilder(context)
     builder.add_input_address(address)
-    # Self-pay minimo: 2 ADA voltam para o proprio endereco.
-    builder.add_output(TransactionOutput(address, 2_000_000))
+    builder.add_output(TransactionOutput(address, 2_000_000))  # 2 ADA self-pay
     builder.auxiliary_data = AuxiliaryData(
         Metadata({METADATA_LABEL: payload})
     )
 
+    # ----------------------------------------------------------------
+    # Passo 5 — Assinar a transacao com a chave de pagamento.
+    # `build_and_sign` calcula o fee, escolhe os UTxOs (coin-selection),
+    # monta o body, assina, e devolve uma Transaction completa.
+    # ----------------------------------------------------------------
     signed_tx = builder.build_and_sign(
         signing_keys=[payment_skey],
         change_address=address,
     )
+
+    # ----------------------------------------------------------------
+    # Passo 6 — Submeter a transacao a rede preprod.
+    # Em ~20-40s a tx aparece em CardanoScan preprod.
+    # `submit_tx` retorna None em sucesso; o tx_hash sai de signed_tx.id.
+    # ----------------------------------------------------------------
     context.submit_tx(signed_tx)
     return str(signed_tx.id)
 
 
 def main() -> None:
+    # Carrega variaveis do .env (BLOCKFROST_PROJECT_ID, WALLET_MNEMONIC, ATOR*_TX)
     load_dotenv()
 
     parser = argparse.ArgumentParser(
@@ -85,6 +130,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    # Validacao basica: precisamos de mnemonico e project_id valido.
     mnemonic = os.environ.get("WALLET_MNEMONIC", "").strip()
     project_id = os.environ.get("BLOCKFROST_PROJECT_ID", "").strip()
 
@@ -98,9 +144,12 @@ def main() -> None:
     print(f"Emitindo DPP do Ator '{args.ator}' DIRETO via PyCardano...")
     print()
 
+    # Executa o fluxo de 6 passos definido em emitir_direto().
     tx_hash = emitir_direto(args.ator, dict(os.environ), mnemonic, project_id)
     proxima_chave = PROXIMO_ATOR_ENV[args.ator]
 
+    # Imprime resultado e instrui o aluno a atualizar o .env para
+    # encadear o proximo ator.
     print("OK - tx submetida em Cardano preprod.")
     print(f"  tx_hash:        {tx_hash}")
     print(

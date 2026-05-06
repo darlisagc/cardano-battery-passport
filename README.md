@@ -7,10 +7,10 @@ cadeia de Passaportes Digitais de Produto (DPP) ancorados em
 Cardano **preprod** — com **duas implementações paralelas** para
 cada operação:
 
-| Operação | Opção A (direto) | Opção B (via UVerify) |
-|---|---|---|
-| **Emissão** | `emissor_direto.py` — PyCardano `TransactionBuilder` + native metadata | `emissor_sdk.py` — `uverify-sdk` |
-| **Verificação** | `verificador_direto.py` — Blockfrost + parser próprio | `verificador_sdk.py` — `uverify-sdk` |
+| Operação | A — Python direto | B — Python via SDK | C — UI UVerify |
+|---|---|---|---|
+| **Emissão** | `emissor_direto.py` — PyCardano `TransactionBuilder` | `emissor_sdk.py` — `uverify-sdk` | <https://app.preprod.uverify.io> |
+| **Verificação** | `verificador_direto.py` — Blockfrost + parser próprio | `verificador_sdk.py` — `uverify-sdk` | URL `app.preprod.uverify.io/verify/…` |
 
 > ⚠️ **Rede:** o UVerify público opera em **preprod testnet**. Todo
 > o starter aponta para preprod (Blockfrost preprod, faucet preprod,
@@ -31,12 +31,22 @@ cada operação:
 
 ## Setup
 
+Recomendado — usa o script idempotente:
+
+```bash
+bash setup.sh
+source .venv/bin/activate
+# preencha BLOCKFROST_PROJECT_ID e WALLET_MNEMONIC no .env (TESTNET ONLY)
+```
+
+`setup.sh` confere o que já está instalado antes de baixar — roda
+quantas vezes quiser sem re-instalar nada. Se preferir manual:
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env
-# preencha BLOCKFROST_PROJECT_ID e WALLET_MNEMONIC (TESTNET ONLY)
 ```
 
 ## Emissão (Seção 2 do hands-on)
@@ -64,8 +74,18 @@ PYTHONPATH=src python -m verificador_dpp.emissor_sdk --ator pack
 PYTHONPATH=src python -m verificador_dpp.emissor_sdk --ator reciclagem
 ```
 
-Os dois caminhos usam os mesmos payloads (`_payloads.py`) e a
+Os dois caminhos Python usam os mesmos payloads (`_payloads.py`) e a
 mesma carteira HD (`wallet.py`).
+
+### Opção C — via UI UVerify (sem código)
+
+1. Abra <https://app.preprod.uverify.io>, conecte a carteira preprod.
+2. *Issue Certificate* → template **Digital Product Passport**.
+3. Cole os campos do payload do ator (referência: `_payloads.py` ou
+   Seção 2.2 do hands-on). Para atores 2-4, preencha
+   `cert_*_credential_tx` com os tx hashes anteriores.
+4. **Issue** → assine na carteira → copie o tx hash para o `.env`
+   como `ATOR<N>_TX=…`.
 
 ## Verificação (Seção 3 do hands-on)
 
@@ -93,6 +113,19 @@ PYTHONPATH=src python -m verificador_dpp.verificador_sdk \
 
 Uma única chamada HTTP devolve a credencial estruturada.
 
+### Opção C — via URL UVerify (sem código)
+
+A UVerify expõe URLs públicas de verificação:
+
+```
+https://app.preprod.uverify.io/verify/by-transaction-hash/<TX_HASH_PACK>/<DATA_HASH_PACK>
+https://app.preprod.uverify.io/verify/<DATA_HASH_PACK>
+https://app.preprod.uverify.io/verify/<DATA_HASH_PACK>?serial=<SERIAL>
+```
+
+Útil para demos e para mostrar o que o consumidor final veria ao
+escanear um QR code. **Não monta a cadeia** — para isso, A ou B.
+
 ## Estrutura
 
 ```
@@ -119,7 +152,7 @@ starter/
 
 - `pycardano` (>= 0.11) — biblioteca canônica Python para Cardano
 - `blockfrost-python` (>= 0.6) — cliente REST do Blockfrost
-- `uverify-sdk` (>= 0.1.5) — SDK oficial do UVerify
+- `uverify-sdk` (>= 0.1.7) — SDK oficial do UVerify
 - `python-dotenv` (>= 1.0) — carrega variáveis do `.env`
 - `cbor2 < 6` — pin necessário até o `cbor2pure` suportar a 6.x
 

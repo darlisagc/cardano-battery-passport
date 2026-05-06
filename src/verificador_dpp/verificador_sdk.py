@@ -11,6 +11,12 @@ Uso:
 Pre-requisitos no .env:
     TX_HASH_PACK     hash da tx do pack (Ator 3)
     DATA_HASH_PACK   sha256(gtin + serial) - impresso pelos emissores
+
+Fluxo da verificacao (3 passos):
+    1. Ler tx_hash + data_hash (CLI args ou .env)
+    2. Criar UVerifyClient apontando para preprod
+    3. Chamar verify_by_transaction(tx_hash, data_hash)
+       -> imprime o CertificateResponse retornado
 """
 
 from __future__ import annotations
@@ -25,6 +31,7 @@ from uverify_sdk import UVerifyApiError, UVerifyClient
 
 
 def main() -> None:
+    # Passo 1 — carregar .env e parsear CLI args
     load_dotenv()
 
     parser = argparse.ArgumentParser(
@@ -43,6 +50,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    # Validacao - os dois hashes sao obrigatorios.
     if not args.tx:
         sys.exit("ERRO: informe --tx ou TX_HASH_PACK no .env.")
     if not args.data_hash:
@@ -58,16 +66,21 @@ def main() -> None:
     print(f"  data_hash: {args.data_hash}")
     print()
 
-    client = UVerifyClient()  # default preprod
+    # Passo 2 — criar cliente UVerify (default base_url = preprod).
+    client = UVerifyClient()
+
+    # Passo 3 — chamar verify_by_transaction:
+    # GET /api/v1/verify/by-transaction-hash/<tx>/<data_hash>
+    # Devolve um CertificateResponse com a metadata completa, tx hash,
+    # creation_time, etc. Em caso de falha levanta UVerifyApiError.
     try:
         cert = client.verify_by_transaction(args.tx, args.data_hash)
     except UVerifyApiError as e:
         sys.exit(f"FALHA: {e}")
 
+    # Imprime o CertificateResponse como JSON legivel.
     print("Credencial encontrada via UVerify:")
     print()
-    # CertificateResponse e um dataclass; serializamos seu __dict__
-    # para impressao legivel.
     print(json.dumps(_para_dict(cert), indent=2, ensure_ascii=False, default=str))
 
 
