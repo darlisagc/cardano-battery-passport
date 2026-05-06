@@ -7,10 +7,10 @@ cadeia de Passaportes Digitais de Produto (DPP) ancorados em
 Cardano **preprod** — com **duas implementações paralelas** para
 cada operação:
 
-| Operação | A — Python direto | B — Python via SDK | C — UI UVerify |
-|---|---|---|---|
-| **Emissão** | `emissor_direto.py` — PyCardano `TransactionBuilder` | `emissor_sdk.py` — `uverify-sdk` | <https://app.preprod.uverify.io> |
-| **Verificação** | `verificador_direto.py` — Blockfrost + parser próprio | `verificador_sdk.py` — `uverify-sdk` | URL `app.preprod.uverify.io/verify/…` |
+| Operação | A — Python direto | B — Python via SDK | C — UI UVerify | Misto |
+|---|---|---|---|---|
+| **Emissão** | `emissor_direto.py` | `emissor_sdk.py` | <https://app.preprod.uverify.io> | — (use A/B/C livremente) |
+| **Verificação** | `verificador_direto.py` (só cadeias todo-A) | `verificador_sdk.py` (só todo-B/C) | URL pública (1 cred. por vez) | `verificador_misto.py` (qualquer mistura A+B+C) |
 
 > ⚠️ **Rede:** o UVerify público opera em **preprod testnet**. Todo
 > o starter aponta para preprod (Blockfrost preprod, faucet preprod,
@@ -112,6 +112,16 @@ PYTHONPATH=src python -m verificador_dpp.verificador_sdk \
 ```
 
 Uma única chamada HTTP devolve a credencial estruturada.
+
+### Caminho misto — `verificador_misto.py` (recomendado para o workshop)
+
+Tenta metadata nativa primeiro; se falhar, extrai `data_hash` do
+inline datum on-chain e consulta a API do UVerify. Caminha
+cadeias **heterogêneas** (mistura de Opções A + B + C).
+
+```bash
+PYTHONPATH=src python -m verificador_dpp.verificador_misto
+```
 
 ### Opção C — via URL UVerify (sem código)
 
