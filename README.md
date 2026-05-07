@@ -26,7 +26,7 @@ cada operação:
 | Componente | Versão |
 |---|---|
 | Python | 3.11+ |
-| pip | recente |
+| [uv](https://docs.astral.sh/uv/) | gerenciador de pacotes/venv (instale com `curl -LsSf https://astral.sh/uv/install.sh \| sh`) |
 | IDE | VS Code com Python extension, PyCharm Community ou similar |
 | Carteira Cardano | [Eternl](https://eternl.io) ou [Lace](https://lace.io) em **preprod** |
 | tADA | [Faucet preprod](https://docs.cardano.org/cardano-testnets/tools/faucet/) |
@@ -34,23 +34,14 @@ cada operação:
 
 ## Setup
 
-Recomendado — usa o script idempotente:
-
 ```bash
-bash setup.sh
-source .venv/bin/activate
-# preencha BLOCKFROST_PROJECT_ID e WALLET_MNEMONIC no .env (TESTNET ONLY)
+uv sync                  # cria .venv e instala dependencias com lock reproducivel
+cp .env.example .env     # preencha BLOCKFROST_PROJECT_ID e WALLET_MNEMONIC (TESTNET ONLY)
 ```
 
-`setup.sh` confere o que já está instalado antes de baixar — roda
-quantas vezes quiser sem re-instalar nada. Se preferir manual:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env
-```
+`uv sync` é idempotente — roda quantas vezes quiser. Não precisa
+ativar o venv: use `uv run <comando>` em qualquer diretório do
+projeto e o uv resolve tudo.
 
 ## Emissão (Seção 2 do hands-on)
 
@@ -60,21 +51,21 @@ em `WALLET_MNEMONIC`.
 ### Opção A — direto via PyCardano
 
 ```bash
-PYTHONPATH=src python -m verificador_dpp.emissor_direto --ator origem
-# cole o tx_hash em ATOR1_TX no .env, depois:
-PYTHONPATH=src python -m verificador_dpp.emissor_direto --ator celula
-PYTHONPATH=src python -m verificador_dpp.emissor_direto --ator pack
-PYTHONPATH=src python -m verificador_dpp.emissor_direto --ator reciclagem
+uv run python -m verificador_dpp.emissor_direto --ator origem
+# o tx_hash vai automaticamente para ATOR1_TX no .env, depois:
+uv run python -m verificador_dpp.emissor_direto --ator celula
+uv run python -m verificador_dpp.emissor_direto --ator pack
+uv run python -m verificador_dpp.emissor_direto --ator reciclagem
 ```
 
 ### Opção B — via UVerify SDK
 
 ```bash
-PYTHONPATH=src python -m verificador_dpp.emissor_sdk --ator origem
-# cole o tx_hash em ATOR1_TX no .env, depois:
-PYTHONPATH=src python -m verificador_dpp.emissor_sdk --ator celula
-PYTHONPATH=src python -m verificador_dpp.emissor_sdk --ator pack
-PYTHONPATH=src python -m verificador_dpp.emissor_sdk --ator reciclagem
+uv run python -m verificador_dpp.emissor_sdk --ator origem
+# o tx_hash vai automaticamente para ATOR1_TX no .env, depois:
+uv run python -m verificador_dpp.emissor_sdk --ator celula
+uv run python -m verificador_dpp.emissor_sdk --ator pack
+uv run python -m verificador_dpp.emissor_sdk --ator reciclagem
 ```
 
 Os dois caminhos Python usam os mesmos payloads (`_payloads.py`) e a
@@ -96,9 +87,9 @@ Pré-requisitos no `.env`: `TX_HASH_PACK` e — se algum ator foi
 emitido via UVerify (B ou C) — `DATA_HASH_PACK`.
 
 ```bash
-PYTHONPATH=src python -m verificador_dpp.verificador_misto
+uv run python -m verificador_dpp.verificador_misto
 # ou:
-PYTHONPATH=src python -m verificador_dpp.verificador_misto <txHashPack>
+uv run python -m verificador_dpp.verificador_misto <txHashPack>
 ```
 
 `verificador_misto` caminha qualquer cadeia, independente de qual
@@ -132,7 +123,8 @@ monta a cadeia — para reconstruir origem→célula→pack, use
 
 ```
 starter/
-├── requirements.txt
+├── pyproject.toml
+├── uv.lock
 ├── .env.example
 ├── README.md
 └── src/verificador_dpp/
@@ -153,9 +145,11 @@ starter/
 
 - `pycardano` (>= 0.11) — biblioteca canônica Python para Cardano
 - `blockfrost-python` (>= 0.6) — cliente REST do Blockfrost
-- `uverify-sdk` (>= 0.1.7) — SDK oficial do UVerify
+- `uverify-sdk` (>= 0.1.8) — SDK oficial do UVerify
 - `python-dotenv` (>= 1.0) — carrega variáveis do `.env`
 - `cbor2 < 6` — pin necessário até o `cbor2pure` suportar a 6.x
+
+Versões exatas ficam pinadas no `uv.lock` (commitado para builds reproduzíveis).
 
 ## Troubleshooting
 
