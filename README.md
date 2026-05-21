@@ -1,4 +1,4 @@
-# Verificador & Emissor DPP — Workshop Cardano
+#  DPP Workshop Cardano
 
 **De Jequitinhonha à Europa: o Passaporte da Bateria**
 
