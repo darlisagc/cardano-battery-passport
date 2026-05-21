@@ -153,4 +153,4 @@ Versões exatas ficam pinadas no `uv.lock` (commitado para builds reproduzíveis
 
 ## Troubleshooting
 
-Veja a Seção 6 do guia hands-on (`02-mao-na-massa.md`).
+Veja a Seção 5 do guia hands-on (`mao-na-massa.md`).
