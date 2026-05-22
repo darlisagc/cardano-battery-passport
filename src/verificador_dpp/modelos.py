@@ -18,6 +18,8 @@ class CredencialDPP:
         materiais:          chaves extraidas de "mat_*"
         referencias:        chaves extraidas de "cert_*_credential_tx"
                             (encadeamento com outras credenciais DPP)
+        data_hashes:        chaves extraidas de "cert_*_data_hash"
+                            (hints para lookup UVerify de credenciais B/C)
     """
 
     nome: str | None
@@ -29,6 +31,7 @@ class CredencialDPP:
     conteudo_reciclado: str | None
     materiais: dict[str, str]
     referencias: dict[str, str]
+    data_hashes: dict[str, str]
 
 
 @dataclass(frozen=True)

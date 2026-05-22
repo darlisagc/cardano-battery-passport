@@ -44,7 +44,10 @@ class RelatorioPassaporte:
         linhas.append("")
 
     @staticmethod
-    def _linha(linhas: list[str], rotulo: str, valor: str | None) -> None:
-        if valor is None or not valor.strip():
+    def _linha(linhas: list[str], rotulo: str, valor: str | int | None) -> None:
+        if valor is None:
+            return
+        valor = str(valor)
+        if not valor.strip():
             return
         linhas.append(f"  {rotulo}: {valor}")

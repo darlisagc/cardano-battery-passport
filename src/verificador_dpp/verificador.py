@@ -31,7 +31,10 @@ import sys
 import traceback
 from typing import Any
 
+import re
+
 import cbor2
+import requests
 from blockfrost import ApiUrls, BlockFrostApi
 from dotenv import load_dotenv
 from uverify_sdk import UVerifyApiError, UVerifyClient
@@ -62,12 +65,60 @@ def _walk_for_32byte(node: Any, out: list[str]) -> None:
             _walk_for_32byte(v, out)
 
 
+def _extrair_hashes_do_redeemer(
+    blockfrost: BlockFrostApi, tx_hash: str
+) -> list[str]:
+    """Extract certificate data_hashes from the transaction redeemers.
+
+    UVerify stores the certificate hash as the first field of each
+    UVerifyCertificate in the redeemer's certificate list:
+        redeemer.fields[1].list[*].fields[0].bytes
+    """
+    candidatos: list[str] = []
+    try:
+        redeemers = blockfrost.transaction_redeemers(tx_hash)
+    except Exception:
+        return candidatos
+
+    for rd in redeemers or []:
+        rd_hash = getattr(rd, "redeemer_data_hash", None)
+        if not rd_hash:
+            continue
+        try:
+            datum = blockfrost.script_datum(rd_hash)
+        except Exception:
+            continue
+        jv = getattr(datum, "json_value", None)
+        if jv is None:
+            continue
+        # Navigate: fields[1].list[*].fields[0].bytes
+        # Blockfrost returns Namespace objects, so use getattr.
+        fields = getattr(jv, "fields", None) or []
+        if len(fields) < 2:
+            continue
+        cert_list = getattr(fields[1], "list", None) or []
+        for cert in cert_list:
+            cert_fields = getattr(cert, "fields", None) or []
+            if cert_fields:
+                hash_hex = getattr(cert_fields[0], "bytes", "") or ""
+                if len(hash_hex) == 64:  # 32 bytes in hex
+                    candidatos.append(hash_hex)
+    return candidatos
+
+
 def _extrair_candidatos_data_hash(
     blockfrost: BlockFrostApi, tx_hash: str
 ) -> list[str]:
-    """Le os outputs da tx, parseia os inline_datums e devolve todos os
-    32-byte bytes encontrados — candidatos para o `data_hash`."""
+    """Reune candidatos a data_hash de duas fontes:
+    1. Redeemer data (funciona para todas as opcoes A/B/C)
+    2. Inline datums (fallback heuristico — 32-byte sequences)
+    """
     candidatos: list[str] = []
+
+    # Source 1 — redeemer certificates (most reliable)
+    candidatos.extend(_extrair_hashes_do_redeemer(blockfrost, tx_hash))
+
+    # Source 2 — inline datum 32-byte sequences (heuristic fallback)
     try:
         utxos = blockfrost.transaction_utxos(tx_hash)
     except Exception:
@@ -110,9 +161,12 @@ def _credencial_from_uverify_response(cert: Any) -> CredencialDPP:
 
     referencias: dict[str, str] = {}
     materiais: dict[str, str] = {}
+    data_hashes: dict[str, str] = {}
     for k, v in meta.items():
         if k.startswith("cert_") and k.endswith("_credential_tx"):
             referencias[k[len("cert_"):]] = str(v)
+        elif k.startswith("cert_") and k.endswith("_data_hash"):
+            data_hashes[k[len("cert_"):]] = str(v)
         elif k.startswith("mat_"):
             materiais[k[len("mat_"):]] = str(v)
 
@@ -126,6 +180,66 @@ def _credencial_from_uverify_response(cert: Any) -> CredencialDPP:
         conteudo_reciclado=meta.get("recycled_content"),
         materiais=materiais,
         referencias=referencias,
+        data_hashes=data_hashes,
+    )
+
+
+# -----------------------------------------------------------------
+# Direct UVerify HTTP lookup — avoids SDK JSON recursion issue.
+# The UVerify API response includes a deeply nested `stateDatum`
+# history that exceeds CPython's JSON decoder recursion limit.
+# We fetch the raw text and extract only the `extra` field.
+# -----------------------------------------------------------------
+
+_UVERIFY_BASE = "https://api.preprod.uverify.io"
+
+
+def _verify_by_transaction_direct(
+    tx_hash: str, data_hash: str,
+) -> CredencialDPP:
+    """Fetch credential from UVerify API and extract metadata from the
+    ``extra`` field without fully parsing the deeply-nested JSON."""
+    url = (
+        f"{_UVERIFY_BASE}/api/v1/verify/"
+        f"by-transaction-hash/{tx_hash}/{data_hash}"
+    )
+    resp = requests.get(url, timeout=30)
+    if resp.status_code == 404:
+        raise UVerifyApiError(f"UVerify API error 404: {resp.text}", 404)
+    resp.raise_for_status()
+
+    # Extract the "extra" field value (a JSON-encoded string) from the
+    # raw response text without recursively parsing the full object.
+    m = re.search(r'"extra"\s*:\s*"((?:[^"\\]|\\.)*)"', resp.text)
+    if not m:
+        raise ValueError(
+            f"UVerify response para tx {tx_hash} nao contem campo 'extra'."
+        )
+    extra_json = m.group(1).replace('\\"', '"').replace("\\\\", "\\")
+    meta = json.loads(extra_json)
+
+    referencias: dict[str, str] = {}
+    materiais: dict[str, str] = {}
+    data_hashes: dict[str, str] = {}
+    for k, v in meta.items():
+        if k.startswith("cert_") and k.endswith("_credential_tx"):
+            referencias[k[len("cert_"):]] = str(v)
+        elif k.startswith("cert_") and k.endswith("_data_hash"):
+            data_hashes[k[len("cert_"):]] = str(v)
+        elif k.startswith("mat_"):
+            materiais[k[len("mat_"):]] = str(v)
+
+    return CredencialDPP(
+        nome=meta.get("name"),
+        emitente=meta.get("issuer"),
+        gtin=meta.get("gtin"),
+        origem=meta.get("origin"),
+        fabricado_em=meta.get("manufactured"),
+        pegada_carbono=meta.get("carbon_footprint"),
+        conteudo_reciclado=meta.get("recycled_content"),
+        materiais=materiais,
+        referencias=referencias,
+        data_hashes=data_hashes,
     )
 
 
@@ -183,9 +297,8 @@ def buscar_credencial(
             continue
         seen.add(dh)
         try:
-            cert = uverify.verify_by_transaction(tx_hash, dh)
-            return _credencial_from_uverify_response(cert)
-        except UVerifyApiError as e:
+            return _verify_by_transaction_direct(tx_hash, dh)
+        except (UVerifyApiError, requests.HTTPError) as e:
             last_error = e
             continue
 
@@ -244,14 +357,16 @@ def main() -> None:
 
         # ------------------------------------------------------------
         # Passo 2 — segue cert_celula_credential_tx do pack.
-        # data_hash da celula e descoberto on-chain (sem hint).
+        # Usa cert_celula_data_hash como hint para lookup UVerify.
         # ------------------------------------------------------------
         print("[2/4] Seguindo referencias para as celulas...")
         tx_celula = cred_pack.referencias.get("celula_credential_tx")
+        dh_celula = cred_pack.data_hashes.get("celula_data_hash")
         cred_celula = None
         if tx_celula:
             cred_celula = buscar_credencial(
-                blockfrost, uverify, parser, tx_celula
+                blockfrost, uverify, parser, tx_celula,
+                dh_celula,
             )
             print(f"      OK - {cred_celula.nome}")
         else:
@@ -265,9 +380,11 @@ def main() -> None:
         cred_origem = None
         if cred_celula is not None:
             tx_origem = cred_celula.referencias.get("origem_credential_tx")
+            dh_origem = cred_celula.data_hashes.get("origem_data_hash")
             if tx_origem:
                 cred_origem = buscar_credencial(
-                    blockfrost, uverify, parser, tx_origem
+                    blockfrost, uverify, parser, tx_origem,
+                    dh_origem,
                 )
                 print(f"      OK - {cred_origem.nome}")
             else:

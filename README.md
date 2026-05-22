@@ -69,7 +69,10 @@ uv run python -m verificador_dpp.emissor_sdk --ator reciclagem
 ```
 
 Os dois caminhos Python usam os mesmos payloads (`_payloads.py`) e a
-mesma carteira HD (`wallet.py`).
+mesma carteira HD (`wallet.py`). Cada payload que referencia outro ator
+inclui tanto `cert_*_credential_tx` (tx hash) quanto
+`cert_*_data_hash` (`sha256(gtin+serial)`) — o verificador usa ambos
+para caminhar a cadeia independente do método de emissão.
 
 ### Opção C — via UI UVerify (sem código)
 
@@ -97,12 +100,21 @@ opção emitiu cada credencial. Para cada tx:
 
 1. Tenta a metadata nativa Cardano via Blockfrost — funciona se
    foi emitida pelo `emissor_direto`.
-2. Se não achar `uverify_template_id`, lê o **inline datum** do
-   output de script, extrai todas as bytes de 32 bytes (candidatos
-   a `data_hash`) e tenta cada um contra a API do UVerify.
+2. Se não achar `uverify_template_id`, reúne candidatos a
+   `data_hash` de três fontes (em ordem de prioridade):
+   - **Hint da cadeia** — campo `cert_*_data_hash` da credencial
+     que referencia esta tx (propagado via payloads).
+   - **Redeemer on-chain** — lê o datum do redeemer via Blockfrost
+     e extrai o hash do `UVerifyCertificate`
+     (`redeemer.fields[1].list[*].fields[0].bytes`).
+   - **Inline datum** — fallback heurístico: todas as sequências
+     de 32 bytes encontradas no inline datum.
+3. Testa cada candidato contra a API pública do UVerify via HTTP
+   direto (evita `RecursionError` do SDK causado por respostas
+   com histórico `stateDatum` profundamente aninhado).
 
-Walks `cert_*_credential_tx` references até montar o passaporte
-completo (origem → célula → pack).
+Walks `cert_*_credential_tx` + `cert_*_data_hash` references
+até montar o passaporte completo (origem → célula → pack).
 
 ### Atalho — verificação ad-hoc via URL UVerify (sem código)
 
@@ -153,4 +165,11 @@ Versões exatas ficam pinadas no `uv.lock` (commitado para builds reproduzíveis
 
 ## Troubleshooting
 
-Veja a Seção 5 do guia hands-on (`mao-na-massa.md`).
+- **`RecursionError` ao verificar credenciais UVerify (B/C):** a API
+  UVerify pode retornar respostas com histórico `stateDatum` muito
+  aninhado. O verificador contorna isso com HTTP direto em vez do SDK.
+- **404 ao seguir a cadeia:** verifique que os payloads incluem
+  `cert_*_data_hash` (necessário para credenciais B/C). Re-emita os
+  atores com a versão atualizada de `_payloads.py`.
+
+Veja também a Seção 5 do guia hands-on (`mao-na-massa.md`).

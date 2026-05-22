@@ -82,10 +82,13 @@ class ParserCredencial:
         #   cert_celula_credential_tx
         referencias: dict[str, str] = {}
         materiais: dict[str, str] = {}
+        data_hashes: dict[str, str] = {}
 
         for chave, valor in n.items():
             if chave.startswith("cert_") and chave.endswith("_credential_tx"):
                 referencias[chave[len("cert_"):]] = str(valor)
+            elif chave.startswith("cert_") and chave.endswith("_data_hash"):
+                data_hashes[chave[len("cert_"):]] = str(valor)
             elif chave.startswith("mat_"):
                 materiais[chave[len("mat_"):]] = str(valor)
 
@@ -99,6 +102,7 @@ class ParserCredencial:
             conteudo_reciclado=self._texto(n, "recycled_content"),
             materiais=materiais,
             referencias=referencias,
+            data_hashes=data_hashes,
         )
 
     @staticmethod
