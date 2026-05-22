@@ -1,4 +1,13 @@
-"""Records de domínio do verificador DPP."""
+"""Records de dominio do verificador DPP.
+
+Define as estruturas de dados usadas por todo o verificador:
+
+  - CredencialDPP: uma credencial individual extraida da blockchain
+    (pode vir de metadata nativa ou da API UVerify).
+
+  - PassaporteBateria: agrupa as tres credenciais da cadeia
+    (origem → celula → pack) para gerar o relatorio consolidado.
+"""
 
 from dataclasses import dataclass
 
@@ -7,19 +16,32 @@ from dataclasses import dataclass
 class CredencialDPP:
     """Credencial DPP extraida de metadados UVerify em Cardano.
 
+    Cada credencial representa um elo na cadeia de suprimentos
+    da bateria (ex: origem do litio, fabricacao de celulas, montagem
+    do pack). Os dados sao extraidos de metadata nativa Cardano
+    (opcao A) ou da API do UVerify (opcoes B/C).
+
     Atributos:
-        nome:               name
-        emitente:           issuer
-        gtin:               GTIN (Global Trade Item Number)
-        origem:             origin (pais ou regiao)
-        fabricado_em:       manufactured (ISO 8601)
-        pegada_carbono:     carbon_footprint
-        conteudo_reciclado: recycled_content
-        materiais:          chaves extraidas de "mat_*"
-        referencias:        chaves extraidas de "cert_*_credential_tx"
-                            (encadeamento com outras credenciais DPP)
-        data_hashes:        chaves extraidas de "cert_*_data_hash"
-                            (hints para lookup UVerify de credenciais B/C)
+        nome:               nome do produto (campo "name" do payload)
+        emitente:           empresa emissora (campo "issuer")
+        gtin:               GTIN — Global Trade Item Number (codigo de barras)
+        origem:             local de fabricacao/extracao (campo "origin")
+        fabricado_em:       data de fabricacao ISO 8601 (campo "manufactured")
+        pegada_carbono:     emissoes de CO2 (campo "carbon_footprint")
+        conteudo_reciclado: percentual reciclado (campo "recycled_content")
+        materiais:          composicao do produto — chaves extraidas dos
+                            campos "mat_*" do payload
+                            (ex: mat_niquel → {"niquel": "80%"})
+        referencias:        links para outras credenciais na cadeia —
+                            chaves extraidas dos campos
+                            "cert_*_credential_tx" do payload
+                            (ex: cert_origem_credential_tx → tx_hash)
+        data_hashes:        hints de data_hash para lookup UVerify —
+                            chaves extraidas dos campos
+                            "cert_*_data_hash" do payload
+                            (ex: cert_origem_data_hash → sha256(gtin+serial))
+                            Necessarios para encontrar credenciais emitidas
+                            via SDK ou UI na API do UVerify.
     """
 
     nome: str | None
@@ -36,8 +58,15 @@ class CredencialDPP:
 
 @dataclass(frozen=True)
 class PassaporteBateria:
-    """Passaporte consolidado: as tres credenciais encadeadas da cadeia
-    (origem do litio, celula, pack).
+    """Passaporte consolidado: as tres credenciais encadeadas da cadeia.
+
+    Agrupa os tres elos da cadeia de suprimentos verificados:
+        origem: Ator 1 — extracao do litio (MineraLitio)
+        celula: Ator 2 — fabricacao das celulas (CellTech)
+        pack:   Ator 3 — montagem do pack de bateria (PackMontadora)
+
+    Qualquer elo pode ser None se nao foi encontrado na cadeia
+    (o relatorio exibe um aviso nesses casos).
     """
 
     origem: CredencialDPP | None
