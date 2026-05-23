@@ -347,7 +347,7 @@ Os payloads dos quatro atores ficam em `_payloads.py`, seguindo o template `digi
 | `cert_*` | opcional | certificações |
 | `origin`, `manufactured`, `carbon_footprint`, … | opcional | demais campos do template |
 
-⚠️ Todos os valores são **strings** — exigência do `CertificateData.metadata: Dict[str, str]` e do limite de 64 bytes por string da metadata Cardano.
+⚠️ Todos os valores são **strings** — exigência do `CertificateData.metadata: Dict[str, str]` e do limite de 64 bytes por string da metadata Cardano (transaction size 16KB).
 
 **Encadeamento.** Cada payload aponta para os atores anteriores via dois campos por referência — o **tx hash** (para localizar a transação) e o **data_hash** (hint para lookup UVerify):
 
