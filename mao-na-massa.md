@@ -300,7 +300,7 @@ Existem **duas formas distintas** de ancorar um DPP em Cardano, que definem **on
 
 **Quando usar cada um:**
 
-- **Metadata nativa** — payloads pequenos, dados que precisam ser lidos por **qualquer parte sem dependência** (auditoria pública, regulador, integração customizados, etc).  
+- **Metadata nativa** — payloads pequenos, dados que precisam ser lidos por **qualquer parte sem dependência** (auditoria pública, regulador, integração customizadas, etc).  
 - **Anchor \+ off-chain** — payloads grandes, dados parcialmente sensíveis (ACL), ou quando você quer **UX pronta** (formulário, página de verificação, QR code).
 
 Os dois padrões **coexistem na mesma cadeia** — neste workshop, atores 1+2 usam metadata nativa, atores 3+4 usam anchor UVerify, e o `verificador` faz fallback automático entre os dois para reconstruir o passaporte completo.
