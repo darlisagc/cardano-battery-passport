@@ -376,7 +376,7 @@ O script em `emissor_direto.py`:
 
 1. Monta o payload DPP em memória (`_payloads.py`, schema documentado em 1.2).  
 2. Conecta ao Blockfrost preprod via `BlockFrostChainContext`.  
-3. Constrói uma tx com `TransactionBuilder` e anexa o payload como `AuxiliaryData(Metadata({1990: payload}))`. Como toda tx Cardano precisa de pelo menos um output (UTxO model) e não estamos pagando ninguém, deixamos o `change_address` mandar o leftover (`input - fee`) **de volta para o nosso próprio endereço** — vira um novo UTxO seu. **O custo real é apenas o fee da rede (\~0.18 tADA)**.  
+3. Constrói uma tx com `TransactionBuilder` e anexa o payload como `AuxiliaryData(Metadata({1990: payload}))`. Como toda tx Cardano precisa de pelo menos um output (UTxO model) e não estamos pagando ninguém, deixamos o `change_address` mandar a sobra (`input - fee`) **de volta para o nosso próprio endereço** — vira um novo UTxO seu. **O custo real é apenas o fee da rede (\~0.18 tADA)**.  
 4. Assina com a chave HD derivada do mnemônico.  
 5. Submete via Blockfrost e devolve o tx hash.
 
