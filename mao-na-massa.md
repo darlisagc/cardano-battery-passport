@@ -136,10 +136,6 @@ uv run python -m verificador_dpp.verificador
 
 ## 
 
-## 
-
-## 
-
 ## Seção 0 — Pré-requisitos
 
 ### 0.1 Ambiente local
@@ -220,7 +216,7 @@ uv run python -m verificador_dpp.emissor_direto --ator origem
 
 1. Va a  [https://app.preprod.uverify.io/](https://app.preprod.uverify.io/) .  
 2. Click na opção “Create”  
-3. Apos isto, selecione “Write Text” and type DPP.  
+3. Apos isto, selecione “Write Text” and type DPP certificado bateria.  
 4. Escolha o template **Digital Product Passport**.  
 5. Observe os campos — vamos mapear cada um para um estágio do ciclo de vida da bateria.
 
