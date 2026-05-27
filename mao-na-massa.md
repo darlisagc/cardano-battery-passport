@@ -132,9 +132,57 @@ uv run python -m verificador_dpp.emissor_direto --ator reciclagem
 uv run python -m verificador_dpp.verificador
 ```
 
-##  
+---
 
-## 
+## Glossário rápido
+
+Termos essenciais usados ao longo do workshop. Consulte sempre que encontrar algo desconhecido.
+
+**Blockchain / Cardano**
+
+| Termo | Definição |
+|-------|-----------|
+| **Blockchain** | Registro distribuído e imutável de transações, mantido por uma rede de nós descentralizados. |
+| **Cardano** | Blockchain proof-of-stake usada neste workshop; suporta smart contracts (Plutus/Aiken) e metadata nativa. |
+| **Preprod** | Rede de testes do Cardano que simula a mainnet sem valor real — usamos ela durante todo o workshop. |
+| **tADA** | ADA de teste (sem valor monetário), obtida gratuitamente pelo faucet para pagar taxas na preprod. |
+| **tx / tx_hash** | Transação na blockchain; `tx_hash` é o identificador único (hash SHA-256) de uma transação confirmada. |
+| **UTxO** | *Unspent Transaction Output* — modelo contábil do Cardano: cada "moeda" é um output não gasto de uma tx anterior. |
+| **Metadata** | Dados arbitrários anexados a uma transação Cardano (até 16 KB), usados aqui para gravar o payload DPP. |
+| **Smart contract** | Programa que roda on-chain (validador Plutus); o UVerify usa um para ancorar certificados. |
+| **Datum** | Dados associados a um UTxO em um endereço de script; o validador Plutus os lê ao gastar o UTxO. |
+| **Redeemer** | Argumento fornecido ao gastar um UTxO de script; o verificador extrai dele o hash do certificado. |
+
+**DPP (Digital Product Passport)**
+
+| Termo | Definição |
+|-------|-----------|
+| **DPP** | Passaporte Digital de Produto — registro digital que acompanha o ciclo de vida de um produto (origem, fabricação, reciclagem). |
+| **GTIN** | *Global Trade Item Number* (código de barras GS1); identifica o produto globalmente. No workshop usamos GTINs fictícios. |
+| **Cadeia de suprimentos** | Sequência de atores (mineração → fabricação → montagem → reciclagem) que este workshop simula com 4 credenciais encadeadas. |
+
+**UVerify**
+
+| Termo | Definição |
+|-------|-----------|
+| **UVerify** | Plataforma que simplifica a emissão e verificação de certificados em Cardano via API, SDK e UI. |
+| **data_hash** | `sha256(gtin + serial)` — identificador único do produto na plataforma UVerify e na blockchain. |
+| **uv_url_serial** | `sha256(serial)` — hash do número serial, usado na URL de verificação (o serial em si fica off-chain). |
+| **Template** | Esquema de campos pré-definido pelo UVerify (ex: `digitalProductPassport`) que estrutura a metadata do certificado. |
+| **Bootstrap Datum** | Datum de configuração da plataforma UVerify on-chain; ponto de partida para criar State Datums. |
+| **State Datum** | Datum derivado do Bootstrap; funciona como uma "sessão" on-chain para emissões subsequentes de certificados. |
+| **Credencial / Certificado** | Registro DPP ancorado em Cardano — contém o payload de um ator (origem, célula, pack ou reciclagem). |
+
+**Python / Ferramentas**
+
+| Termo | Definição |
+|-------|-----------|
+| **PyCardano** | Biblioteca Python para construir, assinar e submeter transações Cardano — usada nas Opções A e B. |
+| **uv** | Gerenciador de pacotes e ambientes virtuais Python ultrarrápido; substitui `pip` + `venv` neste workshop. |
+| **Blockfrost** | API REST que indexa a blockchain Cardano; usada pelo verificador e pelo emissor direto (Opção A). |
+| **Mnemônico / seed phrase** | Sequência de 24 palavras que gera as chaves criptográficas da carteira (CIP-1852). **Nunca compartilhe o de mainnet.** |
+
+---
 
 ## Seção 0 — Pré-requisitos
 
@@ -174,6 +222,13 @@ uv --version        # uv 0.5.* ou superior
 1. Acesse [https://docs.cardano.org/cardano-testnets/tools/faucet/](https://docs.cardano.org/cardano-testnets/tools/faucet/)  
 2. Selecione **Preprod Testnet**, cole o endereço da carteira, receba **10.000 tADA**.  
 3. Confirme a chegada dos fundos na carteira (pode levar 1--2 min).
+
+> **💰 Custos no workshop vs produção**
+>
+> - **Preprod (este workshop):** gratuito — tADA do faucet, sem custo real.
+> - **Opção A (metadata nativa):** ~0.18 ADA por tx (apenas fee de rede).
+> - **Opções B/C (UVerify):** ~0.34–0.45 ADA por certificado + ~2 ADA de fee única para criar o State Datum (reembolsável ao fechar).
+> - Para custos em produção (mainnet), consulte: https://docs.uverify.io/pricing
 
 ### 0.4 UVerify
 
@@ -238,7 +293,11 @@ UVerify DDP template: [https://docs.uverify.io/templates/built-in](https://docs.
 | `mat_*` | mapa opcional | composição (ex: `mat_litio: 98%`) |
 | `cert_*` | mapa opcional | certificações. **Também usamos aqui para encadear credenciais** — ver 1.4 |
 
-### 
+Para a lista completa de campos opcionais do template (`model`, `brand_color`, `repair_info`, `recycling`, etc.), consulte a documentação oficial: https://docs.uverify.io/templates/built-in
+
+**Privacidade por design — o padrão `uv_url_*`.** O campo `uv_url_serial` armazena on-chain apenas o hash SHA-256 do número serial (`sha256(serial)`), nunca o valor em texto plano. O serial real aparece somente off-chain, como parâmetro de URL na página de verificação (ex: `?serial=ML-JQT-2026-03-042`). Quando alguém acessa essa URL, a página calcula o hash do parâmetro localmente no browser e compara com o valor on-chain — se bater, o certificado é válido. Assim, o número serial do produto **nunca toca a blockchain**, garantindo privacidade.
+
+###
 
 ### 1.3 Ancoragem on-chain
 
@@ -249,6 +308,10 @@ O UVerify calcula `hash = sha256(gtin + serialNumber)` localmente e constrói um
 3. **Pede sua carteira para assinar** e transmite na rede preprod.
 
 O serial completo nunca sai do seu navegador — só o hash entra na blockchain. O produto é verificado via URL do tipo `https://app.preprod.uverify.io/verify/<data_hash>/<index>?serial=<serial>`.
+
+> **O que acontece por trás (Opções B/C)**
+>
+> Na primeira emissão via UVerify, a plataforma cria um **State Datum** on-chain (~2 ADA, reembolsáveis ao fechar), derivado do **Bootstrap Datum** (configuração global da plataforma). Pense no State Datum como uma "sessão" sua no smart contract — certificados subsequentes reutilizam esse State já existente e custam menos. Não é necessário entender esses detalhes para o workshop, mas se quiser saber mais: https://docs.uverify.io/platform
 
 ### 1.4 Encadeamento
 
@@ -330,6 +393,8 @@ WALLET_MNEMONIC=palavra1 palavra2 ... palavra24    # Preprod ONLY
 
 ⚠️ **Preprod ONLY.** Cole apenas o mnemônico de uma carteira **preprod** que já recebeu tADA do faucet (Seção 0.3). **Nunca** cole um mnemônico mainnet em arquivo de texto.
 
+⚠️ **Opções B/C — URL da API.** Para que o SDK aponte para a rede preprod, defina `UVERIFY_API_URL` no `.env` (veja `.env.example`). Se não for definida, o SDK usa o default (`api.preprod.uverify.io`), mas é boa prática tornar isso explícito.
+
 A derivação segue CIP-1852 (`m/1852'/1815'/0'/0/0` para pagamento, `m/1852'/1815'/0'/2/0` para stake), o mesmo que Eternl/Lace usam: o endereço derivado pelo Python coincide com o endereço da sua carteira. tADA do faucet vale para os dois.
 
 ### 2.2 Payload DPP — compartilhado pelas duas opções
@@ -339,6 +404,7 @@ Os payloads dos quatro atores ficam em `_payloads.py`, seguindo o template `digi
 | Campo | Obrigatório | Comentário |
 | :---- | :---- | :---- |
 | `uverify_template_id` | sim | Sempre `"digitalProductPassport"` |
+| `uverify_update_policy` | sim | `"restricted"` — impede sobrescrita do certificado após emissão |
 | `name`, `issuer`, `gtin` | sim | identidade do lote |
 | `uv_url_serial` | sim | `sha256(serial)` — diferente do `hash` |
 | `cert_*_credential_tx` | convenção do workshop | refs encadeadas (tx hash do ator anterior) |
@@ -651,6 +717,8 @@ https://app.preprod.uverify.io/verify/<DATA_HASH>?serial=<SERIAL>
 ```
 
 A página exibe os campos do template DPP em formato legível, o tx hash, o emissor e a data de criação. O `data_hash` aparece como **Unique Product Identifier** na página da credencial.
+
+O parâmetro `?serial=` na URL é o padrão *privacy-split* em ação (ver Seção 1.2): a página calcula `sha256(serial)` localmente no browser e compara com o campo `uv_url_serial` gravado on-chain — se os hashes coincidirem, o serial é autêntico sem nunca ter sido exposto na blockchain.
 
 ⚠️ **Limitações:** funciona apenas em credenciais emitidas via UVerify (Opções B ou C) — credenciais do `emissor_direto` (Opção A) não estão indexadas pelo UVerify. E não monta a cadeia — para reconstruir origem→célula→pack, use o `verificador`.
 

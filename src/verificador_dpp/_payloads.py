@@ -99,6 +99,8 @@ def payload_origem(_env: dict[str, str] | None = None) -> tuple[dict, str, str]:
     payload = {
         # Identificacao do template UVerify.
         "uverify_template_id": "digitalProductPassport",
+        # Impede sobrescrita do certificado (padrao UVerify para DPP).
+        "uverify_update_policy": "restricted",
         # Dados do produto.
         "name": "Lote Litio Jequitinhonha 2026-03",
         "issuer": "MineraLitio Jequitinhonha Ltda.",
@@ -148,6 +150,7 @@ def payload_celula(env: dict[str, str]) -> tuple[dict, str, str]:
     gtin = "7891234560020"
     payload = {
         "uverify_template_id": "digitalProductPassport",
+        "uverify_update_policy": "restricted",
         "name": "Celulas NMC 811 - Lote BA-2026-04-008",
         "issuer": "CellTech Brasil S.A.",
         "gtin": gtin,
@@ -200,6 +203,7 @@ def payload_pack(env: dict[str, str]) -> tuple[dict, str, str]:
     gtin = "7891234560037"
     payload = {
         "uverify_template_id": "digitalProductPassport",
+        "uverify_update_policy": "restricted",
         "name": "Pack EV 75kWh - SP-2026-04-155",
         "issuer": "PackMontadora SP Ltda.",
         "gtin": gtin,
@@ -251,6 +255,7 @@ def payload_reciclagem(env: dict[str, str]) -> tuple[dict, str, str]:
     gtin = "7891234560044"
     payload = {
         "uverify_template_id": "digitalProductPassport",
+        "uverify_update_policy": "restricted",
         "name": "Reciclagem Pack 75kWh - SR-2031-08-001",
         "issuer": "RecicLar Sorocaba S.A.",
         "gtin": gtin,

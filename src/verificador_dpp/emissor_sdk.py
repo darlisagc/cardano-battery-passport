@@ -109,14 +109,22 @@ def emitir_via_sdk(
     )
 
     # ----------------------------------------------------------------
-    # Passo 4 — Criar o cliente UVerify (default: api.preprod.uverify.io)
-    # e pedir que ele faca emissao.
+    # Passo 4 — Criar o cliente UVerify, apontando para a URL da API
+    # definida em UVERIFY_API_URL (default do SDK: api.preprod.uverify.io).
     # O SDK:
     #   1. POSTa /api/v1/transaction/build  -> recebe tx CBOR-hex
     #   2. chama nossa sign_tx callback     -> recebe witness CBOR-hex
     #   3. POSTa /api/v1/transaction/submit -> recebe tx_hash
     # ----------------------------------------------------------------
-    client = UVerifyClient()
+    base_url = os.environ.get("UVERIFY_API_URL", "").strip()
+    if base_url:
+        client = UVerifyClient(base_url=base_url)
+    else:
+        print(
+            "AVISO: UVERIFY_API_URL nao definida no .env — "
+            "usando URL padrao do SDK (api.preprod.uverify.io)."
+        )
+        client = UVerifyClient()
     tx_hash = client.issue_certificates(
         address=str(address),
         certificates=[cert],
