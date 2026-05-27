@@ -23,8 +23,10 @@ Fluxo da emissao (cada `--ator <X>`):
     2. Derivar carteira HD do mnemonico
     3. Calcular o data_hash = sha256(gtin + serial) (impressao digital)
     4. Embrulhar tudo num CertificateData
-    5. Pedir ao SDK que monte+submeta a tx, fornecendo a callback
-       de assinatura que assina com a chave HD via PyCardano
+    5. Verificar/limpar estado obsoleto (stale state)
+    6. Garantir colateral para scripts Plutus V3
+    7. Montar tx com tratamento de status codes
+    8. Retry com exponential backoff (5 tentativas)
 """
 
 from __future__ import annotations
@@ -33,6 +35,7 @@ import argparse
 import os
 import sys
 import tempfile
+import time
 import webbrowser
 from typing import Callable
 
@@ -43,12 +46,26 @@ from pycardano import (
     TransactionWitnessSet,
     VerificationKeyWitness,
 )
-from uverify_sdk import UVerifyClient
+from uverify_sdk import DataSignature, UVerifyClient, UVerifyApiError
 from uverify_sdk.models import CertificateData
+from uverify_sdk.models.transaction import BuildTransactionRequest
 
 from ._payloads import ATORES, PROXIMO_ATOR_ENV, data_hash
 from .relatorio_emissao_html import RelatorioEmissaoHTML
 from .wallet import carregar_carteira
+
+
+# =========================================================================
+# Constantes de retry
+# =========================================================================
+
+MAX_ATTEMPTS = 5
+INITIAL_DELAY_S = 5
+
+
+# =========================================================================
+# Callbacks de assinatura
+# =========================================================================
 
 
 def fazer_callback_assinatura(
@@ -56,12 +73,8 @@ def fazer_callback_assinatura(
 ) -> Callable[[str], str]:
     """Cria a callback que o UVerify SDK chama para assinar a tx.
 
-    Contrato (verificado contra uverify-sdk 0.1.7):
+    Contrato (verificado contra uverify-sdk 0.1.8):
         sign_tx(unsigned_cbor_hex: str) -> witness_set_cbor_hex: str
-
-    Analogia: o UVerify monta a "carta" (transacao) e nos pede para
-    assinar. Esta callback recebe a carta, assina com nossa chave,
-    e devolve a assinatura para o UVerify enviar ao cartorio (blockchain).
 
     Fluxo da assinatura (4 passos):
         1. Decodificar a tx CBOR-hex que o UVerify acabou de montar
@@ -72,32 +85,211 @@ def fazer_callback_assinatura(
     """
 
     def sign_tx(unsigned_cbor_hex: str) -> str:
-        # Passo 1 — decodifica a tx que veio do UVerify (CBOR-hex string).
         tx = Transaction.from_cbor(unsigned_cbor_hex)
-
-        # Passo 2 — hash do body (o que o Cardano espera ver assinado).
         body_hash = tx.transaction_body.hash()
-
-        # Passo 3 — assinatura Ed25519 sobre o body_hash.
         signature = payment_skey.sign(body_hash)
-
-        # Passo 4 — Cardano espera vkey Ed25519 normal de 32 bytes
-        # (sem o chain code de 32 bytes do CIP-1852 estendido).
-        # Analogia: como mostrar sua identidade (vkey) junto com
-        # a assinatura para provar que voce e quem diz ser.
         vkey = payment_skey.to_verification_key().to_non_extended()
         witness = VerificationKeyWitness(vkey, signature)
-
-        # Devolve o witness set em CBOR-hex — formato que o SDK espera.
         return TransactionWitnessSet(vkey_witnesses=[witness]).to_cbor_hex()
 
     return sign_tx
 
 
+def fazer_callback_mensagem(
+    payment_skey: ExtendedSigningKey,
+) -> Callable[[str], DataSignature]:
+    """Cria a callback CIP-8 para operacoes de estado do UVerify.
+
+    O UVerify usa um fluxo de dois passos para gerenciar estados:
+        1. Servidor envia um challenge (mensagem)
+        2. Cliente assina com Ed25519 e devolve (vkey, signature)
+
+    Retorna:
+        Callable que recebe uma mensagem string e devolve DataSignature.
+    """
+
+    def sign_message(message: str) -> DataSignature:
+        msg_bytes = message.encode("utf-8")
+        signature = payment_skey.sign(msg_bytes)
+        vkey = payment_skey.to_verification_key().to_non_extended()
+        return DataSignature(
+            key=bytes(vkey).hex(),
+            signature=signature.hex(),
+        )
+
+    return sign_message
+
+
+# =========================================================================
+# Helpers de infraestrutura
+# =========================================================================
+
+
+def _aguardar_confirmacao(client: UVerifyClient, tx_hash: str, timeout: int = 60) -> bool:
+    """Poll GET /api/v1/transaction/confirm/{hash} ate confirmacao ou timeout."""
+    start = time.time()
+    while time.time() - start < timeout:
+        try:
+            resp = client._session.get(
+                f"{client._base_url}/api/v1/transaction/confirm/{tx_hash}",
+                timeout=15,
+            )
+            if resp.status_code == 200:
+                return True
+        except Exception:
+            pass
+        time.sleep(5)
+    return False
+
+
+def _preparar_colateral(
+    client: UVerifyClient,
+    address: str,
+    sign_tx: Callable[[str], str],
+) -> None:
+    """Garante que a carteira tem um UTXO de colateral >= 5 ADA.
+
+    UVerify usa smart contracts Plutus V3 que exigem colateral dedicado.
+    Este endpoint cria um split tx que separa 5 ADA em um UTXO dedicado.
+    """
+    print("  [colateral] Verificando colateral...")
+    try:
+        resp = client._session.post(
+            f"{client._base_url}/api/v1/transaction/prepare-collateral",
+            json={"senderAddress": address},
+            timeout=30,
+        )
+    except Exception as e:
+        print(f"  [colateral] Falha na requisicao: {e}")
+        return
+
+    if not resp.ok:
+        print(f"  [colateral] API retornou {resp.status_code} — prosseguindo sem colateral dedicado.")
+        return
+
+    data = resp.json()
+    status_msg = data.get("status", {}).get("message", "") or ""
+
+    if "COLLATERAL_ALREADY_AVAILABLE" in status_msg.upper():
+        print("  [colateral] ✓ Colateral ja disponivel.")
+        return
+
+    unsigned_tx = data.get("unsignedTransaction")
+    if not unsigned_tx:
+        print("  [colateral] ✓ Nenhuma acao necessaria.")
+        return
+
+    # Assinar e submeter a tx de split do colateral
+    print("  [colateral] Criando UTXO de colateral (5 ADA)...")
+    witness_set = sign_tx(unsigned_tx)
+    tx_hash = client.core.submit_transaction(unsigned_tx, witness_set)
+    print(f"  [colateral] Tx submetida: {tx_hash[:16]}...")
+
+    # Aguardar confirmacao
+    if _aguardar_confirmacao(client, tx_hash):
+        print("  [colateral] ✓ Colateral confirmado.")
+    else:
+        print("  [colateral] AVISO: Timeout aguardando confirmacao — prosseguindo.")
+
+
+def _verificar_e_limpar_estado(
+    client: UVerifyClient,
+    address: str,
+    sign_message: Callable[[str], DataSignature],
+) -> None:
+    """Verifica se a carteira tem estado obsoleto e tenta invalidar.
+
+    Bug #54 do UVerify: carteiras que emitiram certificados em uma era
+    anterior do Bootstrap ficam com um State Datum incompativel que causa
+    '/ by zero' no backend. A solucao e invalidar (opt_out) o estado.
+    """
+    print("  [estado] Verificando estado existente...")
+    try:
+        resp = client.get_user_info(address, sign_message=sign_message)
+        if resp.state:
+            print(
+                f"  [estado] ✓ Estado valido encontrado "
+                f"(id={resp.state.id[:12]}..., countdown={resp.state.countdown})"
+            )
+        else:
+            print("  [estado] ✓ Nenhum estado — sera criado na emissao.")
+    except UVerifyApiError as e:
+        error_body = str(e.response_body).lower() if e.response_body else ""
+        if "by zero" in error_body or e.status_code == 500:
+            print("  [estado] Estado obsoleto detectado (/ by zero) — tentando opt_out...")
+            try:
+                # opt_out sem state_id invalida todos os estados
+                client.opt_out(address, state_id="", sign_message=sign_message)
+                print("  [estado] ✓ Estado invalidado com sucesso.")
+                time.sleep(15)  # Aguardar burn do state token
+            except Exception as opt_err:
+                print(f"  [estado] AVISO: opt_out falhou ({opt_err}). Prosseguindo...")
+        else:
+            print(f"  [estado] AVISO: Erro ao consultar estado ({e.status_code}). Prosseguindo...")
+    except Exception as e:
+        print(f"  [estado] AVISO: Nao foi possivel verificar estado ({e}). Prosseguindo...")
+
+
+def _emitir_com_tratamento(
+    client: UVerifyClient,
+    address: str,
+    cert: CertificateData,
+    sign_tx: Callable[[str], str],
+    sign_message: Callable[[str], DataSignature],
+) -> str:
+    """Emite certificado com tratamento de status codes da API.
+
+    Verifica a resposta do build para COLLATERAL_REQUIRED e
+    PENDING_TRANSACTION, tratando cada caso antes de prosseguir.
+
+    Retorna:
+        tx_hash da transacao submetida.
+    """
+    request = BuildTransactionRequest(
+        type="default",
+        address=address,
+        certificates=[cert],
+    )
+
+    response = client.core.build_transaction(request)
+    status_msg = (response.status.message or "").upper() if response.status else ""
+
+    # Tratar COLLATERAL_REQUIRED
+    if "COLLATERAL" in status_msg and "REQUIRED" in status_msg:
+        print("  Status: COLLATERAL_REQUIRED — preparando colateral...")
+        _preparar_colateral(client, address, sign_tx)
+        time.sleep(10)
+        response = client.core.build_transaction(request)
+        status_msg = (response.status.message or "").upper() if response.status else ""
+
+    # Tratar PENDING_TRANSACTION (UTXO contention)
+    if "PENDING" in status_msg:
+        print("  Status: PENDING_TRANSACTION — aguardando tx anterior...")
+        time.sleep(30)
+        response = client.core.build_transaction(request)
+
+    # Assinar e submeter
+    witness_set = sign_tx(response.unsigned_transaction)
+    return client.core.submit_transaction(response.unsigned_transaction, witness_set)
+
+
+# =========================================================================
+# Funcao principal de emissao
+# =========================================================================
+
+
 def emitir_via_sdk(
     ator: str, env: dict[str, str], mnemonic: str
 ) -> tuple[str, str]:
-    """Emite a credencial DPP via UVerify SDK; devolve (tx_hash, data_hash)."""
+    """Emite a credencial DPP via UVerify SDK; devolve (tx_hash, data_hash).
+
+    Fluxo robusto com 5 camadas de protecao:
+        1. Verificacao/limpeza de estado obsoleto
+        2. Preparacao de colateral
+        3. Tratamento de status codes (COLLATERAL_REQUIRED, PENDING)
+        4. Exponential backoff (5 tentativas, delays 5→80s)
+        5. Deteccao de carteira vazia (InsufficientFundsError)
+    """
 
     # ----------------------------------------------------------------
     # Passo 1 — Construir o payload DPP e extrair gtin/serial.
@@ -110,10 +302,7 @@ def emitir_via_sdk(
     payment_skey, address = carregar_carteira(mnemonic)
 
     # ----------------------------------------------------------------
-    # Passo 3 — Embrulhar tudo num CertificateData:
-    #   - hash:      sha256(gtin + serial) — impressao digital do produto
-    #   - algorithm: SHA-256
-    #   - metadata:  o payload DPP (template digitalProductPassport)
+    # Passo 3 — Embrulhar tudo num CertificateData.
     # ----------------------------------------------------------------
     cert = CertificateData(
         hash=data_hash(gtin, serial),
@@ -122,11 +311,7 @@ def emitir_via_sdk(
     )
 
     # ----------------------------------------------------------------
-    # Passo 4 — Criar o cliente UVerify e emitir.
-    # Analogia: entregamos os dados ao "cartorio" (UVerify), que:
-    #   1. POSTa /api/v1/transaction/build  -> monta a tx
-    #   2. chama nossa sign_tx callback     -> pedimos para assinar
-    #   3. POSTa /api/v1/transaction/submit -> envia a blockchain
+    # Passo 4 — Criar o cliente UVerify e callbacks.
     # ----------------------------------------------------------------
     base_url = os.environ.get("UVERIFY_API_URL", "").strip()
     if base_url:
@@ -137,12 +322,47 @@ def emitir_via_sdk(
             "usando URL padrao do SDK (api.preprod.uverify.io)."
         )
         client = UVerifyClient()
-    tx_hash = client.issue_certificates(
-        address=str(address),
-        certificates=[cert],
-        sign_tx=fazer_callback_assinatura(payment_skey),
-    )
-    return tx_hash, cert.hash
+
+    sign_tx_cb = fazer_callback_assinatura(payment_skey)
+    sign_msg_cb = fazer_callback_mensagem(payment_skey)
+    addr_str = str(address)
+
+    # ----------------------------------------------------------------
+    # Passo 5 — Verificar/limpar estado obsoleto (Bug #54).
+    # ----------------------------------------------------------------
+    _verificar_e_limpar_estado(client, addr_str, sign_msg_cb)
+
+    # ----------------------------------------------------------------
+    # Passo 6 — Garantir colateral para scripts Plutus V3.
+    # ----------------------------------------------------------------
+    _preparar_colateral(client, addr_str, sign_tx_cb)
+
+    # ----------------------------------------------------------------
+    # Passo 7 — Emitir com retry e exponential backoff.
+    # ----------------------------------------------------------------
+    last_error: Exception | None = None
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            tx_hash = _emitir_com_tratamento(
+                client, addr_str, cert, sign_tx_cb, sign_msg_cb
+            )
+            return tx_hash, cert.hash
+        except UVerifyApiError as e:
+            # Carteira vazia — fatal, nao adianta retry
+            if "no utxos found" in str(e).lower():
+                raise
+            last_error = e
+            delay = INITIAL_DELAY_S * (2 ** (attempt - 1))
+            if attempt < MAX_ATTEMPTS:
+                print(
+                    f"  Tentativa {attempt}/{MAX_ATTEMPTS} falhou "
+                    f"(HTTP {e.status_code}), retentando em {delay}s..."
+                )
+                time.sleep(delay)
+            else:
+                print(f"  Todas as {MAX_ATTEMPTS} tentativas falharam.")
+
+    raise last_error  # type: ignore[misc]
 
 
 def main() -> None:
@@ -172,11 +392,12 @@ def main() -> None:
     print(f"Emitindo DPP do Ator '{args.ator}' via UVerify SDK (preprod)...")
     print()
 
-    # Executa o fluxo de 4 passos definido em emitir_via_sdk().
+    # Executa o fluxo robusto de emissao.
     tx_hash, dh = emitir_via_sdk(args.ator, dict(os.environ), mnemonic)
     proxima_chave = PROXIMO_ATOR_ENV[args.ator]
 
     # Imprime tx_hash + data_hash e atualiza .env automaticamente.
+    print()
     print("OK - credencial publicada em Cardano preprod.")
     print(f"  tx_hash:        {tx_hash}")
     print(f"  data_hash:      {dh}")
