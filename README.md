@@ -107,7 +107,7 @@ cardano-battery-passport/
 ├── uv.lock                                 # Versoes fixas das dependencias (builds reproduziveis)
 ├── .env.example                            # Template — copie para .env e preencha suas chaves
 ├── README.md
-├── mao-na-massa.md                         # Guia hands-on passo a passo (pt-BR, workshop de 180 min)
+├── mao-na-massa.md                         # Guia hands-on passo a passo
 ├── arquitetura-dpp.md                      # Detalhamento da arquitetura e decisoes de design
 └── src/verificador_dpp/
     ├── __init__.py
