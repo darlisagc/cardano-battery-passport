@@ -148,6 +148,10 @@ Termos essenciais usados ao longo do workshop. Consulte sempre que encontrar alg
 | **tADA** | ADA de teste (sem valor monetário), obtida gratuitamente pelo faucet para pagar taxas na preprod. Analogia: "dinheiro de mentira" para pagar as pequenas taxas de registro no sandbox. |
 | **tx / tx_hash** | Transação na blockchain; `tx_hash` é o identificador único (hash SHA-256) de uma transação confirmada. Analogia: como um número de protocolo — cada registro no cartório tem um código único. |
 | **UTxO** | *Unspent Transaction Output* — modelo contábil do Cardano: cada "moeda" é um output não gasto de uma tx anterior. Analogia: em vez de uma "conta com saldo" (como num banco), o Cardano funciona com "fichas" individuais que você recebe e gasta. O PyCardano gerencia isso automaticamente. |
+| **Colateral** | UTXO dedicado (>=5 ADA) exigido pelo protocolo Cardano para executar smart contracts Plutus. Funciona como um "depósito caução": se o script falhar, o colateral é consumido como penalidade. Se tudo correr bem, fica intocado. O `emissor_sdk` prepara este UTXO automaticamente via `prepare-collateral`. |
+| **State Datum** | Estrutura de dados on-chain usada pelo smart contract do UVerify para manter o estado da carteira (contagem de emissões, Bootstrap Datum, etc.). Criado automaticamente na primeira emissão (~2 ADA). Pode ficar obsoleto ("stale") quando o UVerify atualiza o Bootstrap — nesse caso, o `emissor_sdk` detecta e invalida via `opt_out()`. |
+| **CIP-8** | *Cardano Improvement Proposal 8* — padrão para assinatura de mensagens off-chain usando chaves Cardano. O UVerify usa CIP-8 para autenticar operações de estado: o servidor envia um challenge, o cliente assina com Ed25519 e devolve `(vkey, signature)`. Diferente da assinatura de transação (que assina o body hash), aqui a assinatura é diretamente sobre os bytes da mensagem. |
+| **Exponential Backoff** | Estratégia de retry onde o intervalo entre tentativas dobra a cada falha (ex: 5s, 10s, 20s, 40s, 80s). Evita sobrecarregar a API quando há erros transientes e dá tempo para a rede confirmar transações anteriores. |
 | **Metadata** | Dados arbitrários anexados a uma transação Cardano (até 16 KB), usados aqui para gravar o payload DPP. Analogia: como um "anexo" num e-mail — a transação é o e-mail, e o certificado DPP vai como anexo. |
 | **Smart contract** | Programa que roda on-chain (validador Plutus); o UVerify usa um para ancorar certificados. Analogia: como um "programa automático" dentro do cartório que aplica regras — garante que os certificados não sejam alterados depois de registrados. |
 | **Datum** | Dados associados a um UTxO em um endereço de script; o validador Plutus os lê ao gastar o UTxO. Analogia: como a "ficha de cadastro" guardada junto com um registro no cartório — contém informações que o smart contract precisa para funcionar. |
@@ -498,23 +502,48 @@ uv run python -m verificador_dpp.emissor_direto --ator celula
 
 ### 2.4 Opção B — Emissor via UVerify SDK
 
-Com `uverify-sdk`. O SDK monta a transação contra a API REST do UVerify; seu código só provê uma callback de assinatura, que internamente delega ao PyCardano.
+Com `uverify-sdk`. O SDK monta a transação contra a API REST do UVerify; seu código provê **duas callbacks de assinatura** (uma para transações, outra para mensagens CIP-8), que internamente delegam ao PyCardano.
 
-**Fluxo:**
+Diferente da Opção A (onde você monta tudo do zero), aqui o UVerify funciona como um **despachante**: você entrega os dados, ele prepara a transação, e você só assina. Porém, como o UVerify usa **smart contracts Plutus V3** na blockchain, a emissão envolve mais etapas "de bastidores" — colateral, gerenciamento de estado on-chain e tratamento de erros transientes.
+
+**Fluxo robusto (5 camadas de proteção):**
+
+O `emissor_sdk.py` implementa um fluxo com 5 camadas que lidam automaticamente com as complexidades do smart contract:
 
 ```
-[seu codigo]                  [UVerify API]               [Cardano preprod]
+[emissor_sdk.py]              [UVerify API]                [Cardano preprod]
      |                              |                              |
-     |--- POST /transaction/build ->|                              |
-     |<-- unsigned_tx (CBOR-hex) ---|                              |
+     |--- get_user_info() --------->|  (1) verificar estado        |
+     |<-- estado ok / opt_out ------|                              |
      |                              |                              |
-   sign_tx callback (PyCardano)     |                              |
+     |--- prepare-collateral ------>|  (2) garantir >= 5 ADA       |
+     |<-- ok / criar split tx ------|      colateral para Plutus   |
      |                              |                              |
-     |-- POST /transaction/submit ->|--- submit assinada --------->|
+     |--- build_transaction() ----->|  (3) montar tx               |
+     |<-- unsigned_tx + status -----|      (trata COLLATERAL/      |
+     |                              |       PENDING se necessario) |
+     |                              |                              |
+   sign_tx callback (PyCardano)     |  (4) assinar                 |
+     |                              |                              |
+     |-- submit_transaction() ----->|--- submeter na rede -------->|
      |<--- tx_hash -----------------|                              |
+     |                              |                              |
+     |  (5) retry com backoff se falhar (5 tentativas, 5s->80s)    |
 ```
 
-**Anatomia da callback** (`emissor_sdk.py`):
+**As 5 camadas explicadas:**
+
+1. **Verificação de estado** — Antes de emitir, checa se a carteira tem um State Datum obsoleto (de uma era anterior do Bootstrap). Se detectar, invalida via `opt_out()`. Analogia: como verificar se seu "cadastro no cartório" está atualizado antes de tentar registrar um documento.
+
+2. **Preparação de colateral** — Smart contracts Plutus V3 exigem que a carteira tenha um UTXO de colateral dedicado (>=5 ADA) como garantia de que o script vai executar corretamente. O emissor chama `prepare-collateral` antes da emissão. Analogia: como deixar um "depósito caução" no cartório antes de registrar — se tudo correr bem, o depósito fica intocado.
+
+3. **Tratamento de status codes** — A API do UVerify pode retornar status como `COLLATERAL_REQUIRED` (colateral insuficiente) ou `PENDING_TRANSACTION` (transação anterior ainda em voo). O emissor interpreta esses status e age automaticamente (prepara colateral ou aguarda).
+
+4. **Callback de assinatura** — Igual à versão simples: recebe a transação CBOR-hex montada pelo UVerify, assina com Ed25519 via PyCardano, e devolve o witness set.
+
+5. **Exponential backoff** — Se a emissão falhar por erro transiente (500, timeout, etc.), retenta até 5 vezes com delays progressivos: 5s, 10s, 20s, 40s, 80s. Isso lida com congestão da rede e propagação de UTXOs.
+
+**Callback de assinatura de transação** (`sign_tx` — `emissor_sdk.py`):
 
 ```py
 from pycardano import (
@@ -542,52 +571,99 @@ def sign_tx(unsigned_cbor_hex: str) -> str:
 
 Pontos críticos:
 
-- `to_non_extended()` é essencial: a witness Cardano usa a chave pública Ed25519 de **32 bytes** — sem o chain code do CIP-1852.  
+- `to_non_extended()` é essencial: a witness Cardano usa a chave pública Ed25519 de **32 bytes** — sem o chain code do CIP-1852.
 - A assinatura é dos **64 bytes** do hash do `transaction_body`.
 
-**Emissão** (uma chamada):
+**Callback de assinatura de mensagem** (`sign_message` — CIP-8):
+
+O UVerify usa um protocolo de challenge-response para gerenciamento de estado: o servidor envia uma mensagem, o cliente assina com Ed25519 e devolve `(vkey, signature)`. Isso é necessário para operações como `get_user_info()` e `opt_out()`.
 
 ```py
-from uverify_sdk import UVerifyClient
-from uverify_sdk.models import CertificateData
+from uverify_sdk import DataSignature
 
-# Passo 3 — embrulha tudo num CertificateData:
-#   - hash:      sha256(gtin + serial) - id do produto
-#   - algorithm: SHA-256
-#   - metadata:  o payload DPP (template digitalProductPassport)
+def sign_message(message: str) -> DataSignature:
+    # Converte a mensagem (challenge do servidor) para bytes.
+    msg_bytes = message.encode("utf-8")
+
+    # Assina com a mesma chave de pagamento (Ed25519).
+    signature = payment_skey.sign(msg_bytes)
+    vkey = payment_skey.to_verification_key().to_non_extended()
+
+    # Devolve no formato CIP-8: chave publica + assinatura em hex.
+    return DataSignature(
+        key=bytes(vkey).hex(),
+        signature=signature.hex(),
+    )
+```
+
+**Emissão (fluxo completo com proteções):**
+
+```py
+from uverify_sdk import UVerifyClient, UVerifyApiError
+from uverify_sdk.models import CertificateData
+from uverify_sdk.models.transaction import BuildTransactionRequest
+
+# 1. Embrulhar o payload num CertificateData:
+#    - hash:      sha256(gtin + serial) — id unico do produto
+#    - algorithm: SHA-256
+#    - metadata:  o payload DPP (template digitalProductPassport)
 cert = CertificateData(
     hash=sha256((gtin + serial).encode()).hexdigest(),
     algorithm="SHA-256",
     metadata=payload,
 )
 
-# Passo 4 — cliente UVerify (default base_url = api.preprod.uverify.io)
-# O SDK por baixo:
-#   1. POSTa /api/v1/transaction/build  -> recebe tx CBOR-hex
-#   2. chama nossa sign_tx callback     -> recebe witness CBOR-hex
-#   3. POSTa /api/v1/transaction/submit -> recebe tx_hash
-client = UVerifyClient()
-tx_hash = client.issue_certificates(
-    address=str(address),
-    certificates=[cert],
-    sign_tx=sign_tx,
-)
+# 2. Criar cliente UVerify e callbacks
+client = UVerifyClient(base_url="https://api.preprod.uverify.io")
+sign_tx_cb = fazer_callback_assinatura(payment_skey)
+sign_msg_cb = fazer_callback_mensagem(payment_skey)
+
+# 3. Verificar/limpar estado obsoleto (Bug #54 do UVerify)
+_verificar_e_limpar_estado(client, address, sign_msg_cb)
+
+# 4. Garantir colateral para scripts Plutus V3
+_preparar_colateral(client, address, sign_tx_cb)
+
+# 5. Emitir com retry e exponential backoff (5 tentativas)
+for attempt in range(1, 6):
+    try:
+        # Monta tx via API, trata status codes, assina e submete.
+        tx_hash = _emitir_com_tratamento(
+            client, address, cert, sign_tx_cb, sign_msg_cb
+        )
+        break
+    except UVerifyApiError as e:
+        if "no utxos found" in str(e).lower():
+            raise  # Carteira vazia — fatal, nao adianta retentear
+        delay = 5 * (2 ** (attempt - 1))  # 5, 10, 20, 40, 80s
+        time.sleep(delay)
 ```
 
-**Rodar:**
+Pontos adicionais:
+
+- O **colateral** (>=5 ADA) é necessário para scripts Plutus V3 — sem ele, a API retorna `COLLATERAL_REQUIRED`.
+- O **State Datum** é criado automaticamente na primeira emissão (~2 ADA, reembolsáveis via `opt_out`). Emissões seguintes reutilizam o mesmo State e custam menos.
+- Se a carteira não tem UTXOs (saldo zero), a emissão aborta imediatamente sem retentear.
+
+**Rodar (em sequência — aguarde ~30s entre cada):**
 
 ```shell
+uv run python -m verificador_dpp.emissor_sdk --ator origem
+# aguarde ~30s para o UTXO propagar na rede
+uv run python -m verificador_dpp.emissor_sdk --ator celula
 uv run python -m verificador_dpp.emissor_sdk --ator pack
 uv run python -m verificador_dpp.emissor_sdk --ator reciclagem
 ```
 
-**`Eg :tx --ator pack`**  
-[**`https://preprod.cexplorer.io/tx/4158020f913cb7c8aa8ca35648d9af34f54822b1fb8655c05af2f20ab38081ee?tab=content`](https://preprod.cexplorer.io/tx/4158020f913cb7c8aa8ca35648d9af34f54822b1fb8655c05af2f20ab38081ee?tab=content)** 
+**`Eg :tx --ator origem (UVerify SDK)`**
+[**`https://preprod.cexplorer.io/tx/366193ea3cb28e71be5218bfd55c9df1f6ef38db7f2a8c3c90893e13b58b7c7c`**](https://preprod.cexplorer.io/tx/366193ea3cb28e71be5218bfd55c9df1f6ef38db7f2a8c3c90893e13b58b7c7c)
 
-**`Eg :tx --ator reciclagem`**  
-[**`https://preprod.cexplorer.io/tx/25b44923d8f4be16e3aa9aa733e54a155f59a9132b0d35514b24b564560d7166`](https://preprod.cexplorer.io/tx/25b44923d8f4be16e3aa9aa733e54a155f59a9132b0d35514b24b564560d7166)** 
+**`Eg :tx --ator celula (UVerify SDK)`**
+[**`https://preprod.cexplorer.io/tx/27435cf7191350027cd1d42990198852502b59829024d8314d5268c6d95f4771`**](https://preprod.cexplorer.io/tx/27435cf7191350027cd1d42990198852502b59829024d8314d5268c6d95f4771)
 
-💡 **`.env` atualizado automaticamente** — igual ao `emissor_direto`. Cada emissão grava `ATOR<N>_TX` e `DATA_HASH` no `.env`; quando o ator é `pack`, também grava `TX_HASH_PACK`  (este último é usado pelo `verificador` como hint inicial quando o pack veio de B/C).
+💡 **`.env` atualizado automaticamente** — igual ao `emissor_direto`. Cada emissão grava `ATOR<N>_TX` e `DATA_HASH` no `.env`; quando o ator é `pack`, também grava `TX_HASH_PACK` (este último é usado pelo `verificador` como hint inicial quando o pack veio de B/C).
+
+💡 **Intervalo entre emissões.** Cada transação Cardano precisa de ~20-40s para confirmar na preprod. Se você rodar dois emissores em sequência rápida, o segundo pode falhar com `PENDING_TRANSACTION` ou `BadInputs` (porque o UTXO da tx anterior ainda não foi confirmado). O retry automático com backoff geralmente resolve isso, mas aguardar ~30s entre comandos evita delays desnecessários.
 
 ### 2.5 Opção C — Emissão via UI UVerify (sem código)
 
@@ -770,6 +846,9 @@ A diferença em relação aos outros atores: a recicladora referencia **todas** 
 
 A cadeia forma um grafo acíclico verificável por qualquer parte — desde o regulador europeu que quer checar elegibilidade ao EU Battery Regulation, até o estudante que está fazendo TCC sobre circularidade.
 
+**`Eg :tx --ator reciclagem (UVerify SDK)`**
+[**`https://preprod.cexplorer.io/tx/3dbb183770f1d8bb786cf86e2e4619d932efde8fd740bd3b60304223698ce71c`**](https://preprod.cexplorer.io/tx/3dbb183770f1d8bb786cf86e2e4619d932efde8fd740bd3b60304223698ce71c)
+
 ## Seção 5 — Troubleshooting
 
 ### 5.1 "Faucet lento / tADA não chegou"
@@ -826,10 +905,15 @@ uv add "cbor2<6" --upgrade
 
 ### 5.9 Erros específicos da Opção B (UVerify SDK)
 
-- `UVerifyValidationError: A sign_tx callback is required` — esqueceu de passar `sign_tx=...` para `issue_certificates` (ou para o construtor do `UVerifyClient`).  
-- `UVerifyApiError 400` — payload inválido. Confira que **todos** os valores de `metadata` são strings, e que `uverify_template_id` está exato.  
-- `UVerifyApiError 403` — endereço sem tADA na rede preprod. Volte ao faucet (Seção 0.3).  
+- `UVerifyValidationError: A sign_tx callback is required` — esqueceu de passar `sign_tx=...` para `issue_certificates` (ou para o construtor do `UVerifyClient`).
+- `UVerifyApiError 400` — payload inválido. Confira que **todos** os valores de `metadata` são strings, e que `uverify_template_id` está exato.
+- `UVerifyApiError 403` — endereço sem tADA na rede preprod. Volte ao faucet (Seção 0.3).
 - **Endereço derivado "errado" / não bate com Eternl** — confira que o Eternl está em **preprod**, não preview, não mainnet. As três redes derivam endereços diferentes a partir do mesmo seed.
+- **`UVerifyApiError 500` / `"/ by zero"`** — a carteira tem um State Datum obsoleto de uma era anterior do Bootstrap (Bug #54 do UVerify preprod). O `emissor_sdk` detecta isso automaticamente e tenta invalidar via `opt_out()`. Se persistir, crie uma carteira nova no faucet.
+- **`COLLATERAL_REQUIRED`** — a API do UVerify retornou que a carteira não tem colateral suficiente para executar o smart contract Plutus V3. O `emissor_sdk` prepara isso automaticamente chamando `prepare-collateral`. Se falhar, verifique que a carteira tem pelo menos 10 ADA livres (5 para colateral + 5 para o State Datum).
+- **`PENDING_TRANSACTION`** — a transação anterior ainda não confirmou na rede. O `emissor_sdk` aguarda 30s e retenta. Para evitar, aguarde ~30s entre emissões de atores diferentes.
+- **`no utxos found`** — carteira sem saldo. Volte ao faucet (Seção 0.3) e peça mais tADA.
+- **Emissão falha após 5 tentativas** — indica problema persistente na API. Verifique em https://preprod.cexplorer.io/ se a rede está processando blocos. Se a API do UVerify estiver instável, use a Opção A (`emissor_direto`) como alternativa — os resultados são equivalentes para o verificador.
 
 ### 5.10 Erros específicos da Opção A (emissor direto)
 

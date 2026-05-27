@@ -483,7 +483,7 @@ uma credencial para a proxima como hints para acelerar o lookup UVerify.
 | `_payloads.py` | Definicao dos 4 atores e funcoes `payload_*()` |
 | `wallet.py` | Derivacao HD wallet (CIP-1852) via mnemonic |
 | `emissor_direto.py` | Opcao A — emissao com PyCardano + metadata nativa |
-| `emissor_sdk.py` | Opcao B — emissao via UVerify SDK + callback de assinatura |
+| `emissor_sdk.py` | Opcao B — emissao via UVerify SDK com fluxo robusto: state check, colateral, status codes, CIP-8 signing, exponential backoff |
 | `verificador.py` | Verificador unificado (A+B+C) com caminhada reversa |
 | `parser_credencial.py` | Conversao de metadados brutos em `CredencialDPP` |
 | `modelos.py` | Dataclasses: `CredencialDPP`, `PassaporteBateria` |

@@ -68,11 +68,26 @@ uv run python -m verificador_dpp.emissor_sdk --ator pack
 uv run python -m verificador_dpp.emissor_sdk --ator reciclagem
 ```
 
-Os dois caminhos Python usam os mesmos payloads (`_payloads.py`) e a
-mesma carteira HD (`wallet.py`). Cada payload que referencia outro ator
-inclui tanto `ref_*_tx` (tx hash) quanto
-`ref_*_data_hash` (`sha256(gtin+serial)`) — o verificador usa ambos
-para caminhar a cadeia independente do método de emissão.
+O `emissor_sdk` implementa um fluxo robusto de emissão com **5 camadas
+de proteção**, necessárias porque o UVerify usa smart contracts Plutus V3
+na preprod:
+
+1. **Verificação de estado** — detecta e invalida State Datums obsoletos
+   (Bug #54 do UVerify) que causam erros `/ by zero` no backend.
+2. **Preparação de colateral** — garante um UTXO de ≥5 ADA dedicado
+   para execução de scripts Plutus (exigência do protocolo Cardano).
+3. **Tratamento de status codes** — interpreta `COLLATERAL_REQUIRED` e
+   `PENDING_TRANSACTION` na resposta do build e age automaticamente.
+4. **Exponential backoff** — 5 tentativas com delays progressivos
+   (5s → 10s → 20s → 40s → 80s) para erros transientes da API.
+5. **Detecção de carteira vazia** — aborta imediatamente se não houver
+   UTXOs (sem sentido retentear).
+
+Os dois caminhos Python (A e B) usam os mesmos payloads (`_payloads.py`)
+e a mesma carteira HD (`wallet.py`). Cada payload que referencia outro
+ator inclui tanto `ref_*_tx` (tx hash) quanto `ref_*_data_hash`
+(`sha256(gtin+serial)`) — o verificador usa ambos para caminhar a cadeia
+independente do método de emissão.
 
 ### Opção C — via UI UVerify (sem código)
 
@@ -145,7 +160,7 @@ starter/
     ├── _html_utils.py           # utilidades HTML compartilhadas (esc_html, cexplorer_link)
     ├── wallet.py                # HD wallet CIP-1852 (compartilhado)
     ├── emissor_direto.py        # Opção A — PyCardano TransactionBuilder
-    ├── emissor_sdk.py           # Opção B — uverify-sdk
+    ├── emissor_sdk.py           # Opção B — uverify-sdk (5-layer robust: state, collateral, retry)
     ├── verificador.py           # único verificador (cobre A + B + C)
     ├── parser_credencial.py     # parse de metadata → CredencialDPP + classificar_campos()
     ├── modelos.py               # dataclasses CredencialDPP / PassaporteBateria
@@ -174,5 +189,18 @@ Versões exatas ficam pinadas no `uv.lock` (commitado para builds reproduzíveis
 - **404 ao seguir a cadeia:** verifique que os payloads incluem
   `ref_*_data_hash` (necessário para credenciais B/C). Re-emita os
   atores com a versão atualizada de `_payloads.py`.
+- **500 / `by zero` no emissor_sdk:** a carteira tem um State Datum
+  obsoleto de uma era anterior do Bootstrap (Bug #54 do UVerify preprod).
+  O `emissor_sdk` detecta e invalida esse estado automaticamente via
+  `opt_out()`. Se persistir, crie uma carteira nova ou aguarde o fix
+  server-side do UVerify.
+- **`COLLATERAL_REQUIRED` ao emitir via SDK:** o UVerify usa scripts
+  Plutus V3 que exigem um UTXO de colateral dedicado (≥5 ADA). O
+  `emissor_sdk` prepara esse colateral automaticamente antes da
+  emissão. Se falhar, verifique que a carteira tem saldo suficiente.
+- **`PENDING_TRANSACTION` ao emitir via SDK:** a transação anterior
+  ainda não confirmou. O `emissor_sdk` aguarda 30s e retenta
+  automaticamente. Se persistir entre emissões sequenciais, aumente
+  o intervalo entre comandos (`sleep 30` entre cada ator).
 
 Veja também a Seção 5 do guia hands-on (`mao-na-massa.md`).
