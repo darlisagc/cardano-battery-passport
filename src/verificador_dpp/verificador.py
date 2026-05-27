@@ -87,7 +87,9 @@ import json
 import os
 import re
 import sys
+import tempfile
 import traceback
+import webbrowser
 from typing import Any
 
 import cbor2
@@ -98,6 +100,7 @@ from uverify_sdk import UVerifyApiError, UVerifyClient
 
 from .modelos import CredencialDPP, PassaporteBateria
 from .parser_credencial import ParserCredencial
+from .relatorio_html import RelatorioHTML
 from .relatorio_passaporte import RelatorioPassaporte
 
 
@@ -320,7 +323,9 @@ def _normalize_metadata(meta: Any) -> dict | None:
     return None
 
 
-def _credencial_from_uverify_response(cert: Any) -> CredencialDPP:
+def _credencial_from_uverify_response(
+    cert: Any, tx_hash: str | None = None,
+) -> CredencialDPP:
     """Converte um CertificateResponse do SDK UVerify para CredencialDPP.
 
     Esta funcao e usada quando o verificador chama o SDK do UVerify
@@ -365,6 +370,7 @@ def _credencial_from_uverify_response(cert: Any) -> CredencialDPP:
         materiais=materiais,
         referencias=referencias,
         data_hashes=data_hashes,
+        tx_hash=tx_hash,
     )
 
 
@@ -482,6 +488,7 @@ def _verify_by_transaction_direct(
         materiais=materiais,
         referencias=referencias,
         data_hashes=data_hashes,
+        tx_hash=tx_hash,
     )
 
 
@@ -551,7 +558,7 @@ def buscar_credencial(
 
     if metadata_entries:
         try:
-            return parser.extrair_credencial(metadata_entries)
+            return parser.extrair_credencial(metadata_entries, tx_hash=tx_hash)
         except Exception:
             # A tx tem metadata, mas nao no formato UVerify nativo
             # (sem campo `uverify_template_id`). Provavelmente foi
@@ -735,6 +742,16 @@ def main() -> None:
         print()
         passaporte = PassaporteBateria(cred_origem, cred_celula, cred_pack)
         print(relatorio.gerar(passaporte))
+
+        # Gera relatorio HTML e abre no navegador.
+        html = RelatorioHTML().gerar(passaporte)
+        with tempfile.NamedTemporaryFile(
+            suffix=".html", delete=False, mode="w", encoding="utf-8"
+        ) as f:
+            f.write(html)
+            html_path = f.name
+        print(f"\nRelatorio HTML salvo em: {html_path}")
+        webbrowser.open(f"file://{html_path}")
 
     except Exception as e:  # noqa: BLE001
         print(f"FALHA: {e}", file=sys.stderr)

@@ -32,6 +32,8 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import tempfile
+import webbrowser
 from typing import Callable
 
 from dotenv import find_dotenv, load_dotenv, set_key
@@ -45,6 +47,7 @@ from uverify_sdk import UVerifyClient
 from uverify_sdk.models import CertificateData
 
 from ._payloads import ATORES, PROXIMO_ATOR_ENV, data_hash
+from .relatorio_emissao_html import RelatorioEmissaoHTML
 from .wallet import carregar_carteira
 
 
@@ -194,6 +197,17 @@ def main() -> None:
     print("✓ .env atualizado:")
     for linha in atualizadas:
         print(f"    {linha}")
+
+    # Gera relatorio HTML de emissao e abre no navegador.
+    payload, _, _ = ATORES[args.ator](dict(os.environ))
+    html = RelatorioEmissaoHTML().gerar(args.ator, payload, tx_hash, dh)
+    with tempfile.NamedTemporaryFile(
+        suffix=".html", delete=False, mode="w", encoding="utf-8"
+    ) as f:
+        f.write(html)
+        html_path = f.name
+    print(f"\nRelatorio de emissao salvo em: {html_path}")
+    webbrowser.open(f"file://{html_path}")
 
 
 if __name__ == "__main__":

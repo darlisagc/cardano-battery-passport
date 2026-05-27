@@ -36,7 +36,9 @@ class ParserCredencial:
         credencial = parser.extrair_credencial(metadados)
     """
 
-    def extrair_credencial(self, metadados: list) -> CredencialDPP:
+    def extrair_credencial(
+        self, metadados: list, tx_hash: str | None = None,
+    ) -> CredencialDPP:
         """Extrai a credencial UVerify de uma lista de metadados.
 
         Percorre todos os labels da transacao procurando um que contenha
@@ -66,7 +68,7 @@ class ParserCredencial:
             json_metadata = self._extrair_json(entrada)
             credencial = self._localizar_credencial_uverify(json_metadata)
             if credencial is not None:
-                return self._converter(credencial)
+                return self._converter(credencial, tx_hash=tx_hash)
 
         raise ValueError(
             "Nenhum label desta transacao contem uma credencial UVerify "
@@ -140,7 +142,9 @@ class ParserCredencial:
                     return achado
         return None
 
-    def _converter(self, n: dict) -> CredencialDPP:
+    def _converter(
+        self, n: dict, tx_hash: str | None = None,
+    ) -> CredencialDPP:
         """Converte um dict de metadata UVerify para CredencialDPP.
 
         Classifica os campos do payload pela convencao de nomes:
@@ -188,6 +192,7 @@ class ParserCredencial:
             materiais=materiais,
             referencias=referencias,
             data_hashes=data_hashes,
+            tx_hash=tx_hash,
         )
 
     @staticmethod

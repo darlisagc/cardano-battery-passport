@@ -40,6 +40,10 @@ class CredencialDPP:
                             produtos referenciados — extraido dos campos
                             "cert_*_data_hash". Necessarios para encontrar
                             credenciais emitidas via SDK ou UI na API UVerify.
+        tx_hash:            hash da transacao Cardano onde esta credencial
+                            foi registrada (opcional — preenchido pelo
+                            verificador quando disponivel). Usado para
+                            gerar links clicaveis ao Cexplorer nos relatorios.
     """
 
     nome: str | None
@@ -52,6 +56,7 @@ class CredencialDPP:
     materiais: dict[str, str]
     referencias: dict[str, str]
     data_hashes: dict[str, str]
+    tx_hash: str | None = None
 
 
 @dataclass(frozen=True)
