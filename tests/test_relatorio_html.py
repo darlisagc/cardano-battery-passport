@@ -115,6 +115,29 @@ class TestRelatorioHTML:
         assert "<script>" not in output
         assert "&lt;script&gt;" in output
 
+    def test_html_badge_metadata(self):
+        rel = RelatorioHTML()
+        o = _make_cred(metodo_emissao="metadata")
+        pb = PassaporteBateria(origem=o, celula=None, pack=None)
+        output = rel.gerar(pb)
+        assert 'emission-badge metadata' in output
+        assert "Metadata" in output
+
+    def test_html_badge_uverify(self):
+        rel = RelatorioHTML()
+        o = _make_cred(metodo_emissao="uverify")
+        pb = PassaporteBateria(origem=o, celula=None, pack=None)
+        output = rel.gerar(pb)
+        assert 'emission-badge uverify' in output
+        assert "UVerify" in output
+
+    def test_html_no_badge_when_none(self):
+        rel = RelatorioHTML()
+        o = _make_cred()
+        pb = PassaporteBateria(origem=o, celula=None, pack=None)
+        output = rel.gerar(pb)
+        assert '<span class="emission-badge' not in output
+
     def test_html_with_real_payloads(self):
         """Generate a full HTML report using actual payload data."""
         from types import SimpleNamespace

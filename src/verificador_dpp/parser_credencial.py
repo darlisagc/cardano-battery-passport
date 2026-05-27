@@ -203,6 +203,7 @@ class ParserCredencial:
             referencias=referencias,
             data_hashes=data_hashes,
             tx_hash=tx_hash,
+            metodo_emissao="metadata",
         )
 
     @staticmethod

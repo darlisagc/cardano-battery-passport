@@ -85,7 +85,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import sys
 import tempfile
 import traceback
@@ -359,6 +358,7 @@ def _credencial_from_uverify_response(
         referencias=referencias,
         data_hashes=data_hashes,
         tx_hash=tx_hash,
+        metodo_emissao="uverify",
     )
 
 
@@ -469,6 +469,7 @@ def _verify_by_transaction_direct(
         referencias=referencias,
         data_hashes=data_hashes,
         tx_hash=tx_hash,
+        metodo_emissao="uverify",
     )
 
 

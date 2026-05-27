@@ -56,6 +56,18 @@ class TestCredencialDPP:
         c = _make_cred(data_hashes={"origem_data_hash": "dh123"})
         assert c.data_hashes["origem_data_hash"] == "dh123"
 
+    def test_metodo_emissao_default_none(self):
+        c = _make_cred()
+        assert c.metodo_emissao is None
+
+    def test_metodo_emissao_metadata(self):
+        c = _make_cred(metodo_emissao="metadata")
+        assert c.metodo_emissao == "metadata"
+
+    def test_metodo_emissao_uverify(self):
+        c = _make_cred(metodo_emissao="uverify")
+        assert c.metodo_emissao == "uverify"
+
 
 class TestPassaporteBateria:
     def test_creation_with_all_fields(self):

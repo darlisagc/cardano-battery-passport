@@ -104,6 +104,23 @@ class TestRelatorioReciclagemHTML:
         assert "<script>" not in output
         assert "&lt;script&gt;" in output
 
+    def test_html_badge_metadata(self):
+        rel = RelatorioReciclagemHTML()
+        output = rel.gerar(_make_cred(metodo_emissao="metadata"))
+        assert 'emission-badge metadata' in output
+        assert "Metadata" in output
+
+    def test_html_badge_uverify(self):
+        rel = RelatorioReciclagemHTML()
+        output = rel.gerar(_make_cred(metodo_emissao="uverify"))
+        assert 'emission-badge uverify' in output
+        assert "UVerify" in output
+
+    def test_html_no_badge_when_none(self):
+        rel = RelatorioReciclagemHTML()
+        output = rel.gerar(_make_cred())
+        assert '<span class="emission-badge' not in output
+
     def test_html_teal_header(self):
         rel = RelatorioReciclagemHTML()
         output = rel.gerar(_make_cred())

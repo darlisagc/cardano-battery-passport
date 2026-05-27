@@ -44,6 +44,10 @@ class CredencialDPP:
                             foi registrada (opcional — preenchido pelo
                             verificador quando disponivel). Usado para
                             gerar links clicaveis ao Cexplorer nos relatorios.
+        metodo_emissao:     metodo usado para emitir a credencial na blockchain.
+                            "metadata" = metadata nativa Cardano (emissor_direto),
+                            "uverify" = API UVerify (SDK ou UI).
+                            None se desconhecido.
     """
 
     nome: str | None
@@ -57,6 +61,7 @@ class CredencialDPP:
     referencias: dict[str, str]
     data_hashes: dict[str, str]
     tx_hash: str | None = None
+    metodo_emissao: str | None = None
 
 
 @dataclass(frozen=True)

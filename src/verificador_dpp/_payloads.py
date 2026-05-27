@@ -45,6 +45,37 @@ from hashlib import sha256
 from typing import Callable
 
 
+def _student_id(env: dict[str, str] | None) -> str:
+    """Derive a deterministic 6-char hex suffix from WALLET_MNEMONIC.
+
+    Each student in the workshop has a unique mnemonic, so every wallet
+    gets its own serial namespace. This prevents data_hash collisions
+    on UVerify when multiple students run the same code.
+
+    Returns "000000" when no mnemonic is available (e.g. in tests
+    without a configured wallet).
+    """
+    mnemonic = (env or {}).get("WALLET_MNEMONIC", "").strip()
+    if not mnemonic:
+        return "000000"
+    return sha256(mnemonic.encode("utf-8")).hexdigest()[:6]
+
+
+# ── Base serial prefixes and GTINs ────────────────────────────────
+# GTINs identify the product *type* and stay fixed.
+# Serial prefixes get a student-specific suffix appended at runtime.
+
+_GTIN_ORIGEM = "7891234560099"
+_GTIN_CELULA = "7891234560105"
+_GTIN_PACK   = "7891234560112"
+_GTIN_RECICL = "7891234560129"
+
+_SERIAL_BASE_ORIGEM = "ML-JQT-2026-05"
+_SERIAL_BASE_CELULA = "CT-BA-2026-05"
+_SERIAL_BASE_PACK   = "PM-SP-2026-05"
+_SERIAL_BASE_RECICL = "RL-SR-2031-09"
+
+
 def _exigir(env: dict[str, str], chave: str) -> str:
     """Exige que uma variavel de ambiente esteja definida.
 
@@ -83,8 +114,8 @@ def data_hash(gtin: str, serial: str) -> str:
     certificados. E o identificador unico do produto na blockchain.
 
     Exemplo:
-        data_hash("7891234560013", "ML-JQT-2026-03-042")
-        → "b23525533242f8ba2ae0435170dd99c8bf1a706f261c0062aac827485a3537b0"
+        data_hash("7891234560099", "ML-JQT-2026-05-a1b2c3")
+        → sha256 hex digest
     """
     return sha256((gtin + serial).encode("utf-8")).hexdigest()
 
@@ -96,7 +127,7 @@ def data_hash(gtin: str, serial: str) -> str:
 # Representa a extracao de litio no Vale do Jequitinhonha (MG, Brasil).
 # =====================================================================
 
-def payload_origem(_env: dict[str, str] | None = None) -> tuple[dict, str, str]:
+def payload_origem(env: dict[str, str] | None = None) -> tuple[dict, str, str]:
     """Retorna o payload DPP do Ator 1 (MineraLitio — origem do litio).
 
     Este e o primeiro ator da cadeia, entao nao referencia nenhuma
@@ -105,15 +136,16 @@ def payload_origem(_env: dict[str, str] | None = None) -> tuple[dict, str, str]:
     Retorna:
         Tupla (payload_dict, serial, gtin).
     """
-    serial = "ML-JQT-2026-03-042"
-    gtin = "7891234560013"
+    sid = _student_id(env)
+    serial = f"{_SERIAL_BASE_ORIGEM}-{sid}"
+    gtin = _GTIN_ORIGEM
     payload = {
         # Identificacao do template UVerify.
         "uverify_template_id": "digitalProductPassport",
         # Impede sobrescrita do certificado (padrao UVerify para DPP).
         "uverify_update_policy": "restricted",
         # Dados do produto.
-        "name": "Lote Litio Jequitinhonha 2026-03",
+        "name": "Lote Litio Jequitinhonha 2026-05",
         "issuer": "MineraLitio Jequitinhonha Ltda.",
         "gtin": gtin,
         "uv_url_serial": _hash_serial(serial),
@@ -157,17 +189,19 @@ def payload_celula(env: dict[str, str]) -> tuple[dict, str, str]:
     Retorna:
         Tupla (payload_dict, serial, gtin).
     """
-    serial = "CT-BA-2026-04-008"
-    gtin = "7891234560020"
+    sid = _student_id(env)
+    serial = f"{_SERIAL_BASE_CELULA}-{sid}"
+    gtin = _GTIN_CELULA
+    serial_origem = f"{_SERIAL_BASE_ORIGEM}-{sid}"
     payload = {
         "uverify_template_id": "digitalProductPassport",
         "uverify_update_policy": "restricted",
-        "name": "Celulas NMC 811 - Lote BA-2026-04-008",
+        "name": f"Celulas NMC 811 - Lote BA-2026-05-{sid}",
         "issuer": "CellTech Brasil S.A.",
         "gtin": gtin,
         "uv_url_serial": _hash_serial(serial),
         "origin": "Camacari, BA, BR",
-        "manufactured": "2026-04-08",
+        "manufactured": "2026-05-08",
         "contact": "qualidade@celltech.example.br",
         "carbon_footprint": "68 kg CO2e / kWh",
         "recycled_content": "4%",
@@ -184,7 +218,7 @@ def payload_celula(env: dict[str, str]) -> tuple[dict, str, str]:
         # Referencia ao Ator 1 (origem do litio):
         # tx_hash da credencial + data_hash para lookup UVerify.
         "ref_origem_tx": _exigir(env, "ATOR1_TX"),
-        "ref_origem_data_hash": data_hash("7891234560013", "ML-JQT-2026-03-042"),
+        "ref_origem_data_hash": data_hash(_GTIN_ORIGEM, serial_origem),
     }
     return payload, serial, gtin
 
@@ -210,17 +244,19 @@ def payload_pack(env: dict[str, str]) -> tuple[dict, str, str]:
     Retorna:
         Tupla (payload_dict, serial, gtin).
     """
-    serial = "PM-SP-2026-04-155"
-    gtin = "7891234560037"
+    sid = _student_id(env)
+    serial = f"{_SERIAL_BASE_PACK}-{sid}"
+    gtin = _GTIN_PACK
+    serial_celula = f"{_SERIAL_BASE_CELULA}-{sid}"
     payload = {
         "uverify_template_id": "digitalProductPassport",
         "uverify_update_policy": "restricted",
-        "name": "Pack EV 75kWh - SP-2026-04-155",
+        "name": f"Pack EV 75kWh - SP-2026-05-{sid}",
         "issuer": "PackMontadora SP Ltda.",
         "gtin": gtin,
         "uv_url_serial": _hash_serial(serial),
         "origin": "Sao Bernardo do Campo, SP, BR",
-        "manufactured": "2026-04-22",
+        "manufactured": "2026-05-22",
         "contact": "pcp@packmontadora.example.br",
         "carbon_footprint": "72 kg CO2e / kWh (cradle-to-gate)",
         "recycled_content": "6%",
@@ -238,7 +274,7 @@ def payload_pack(env: dict[str, str]) -> tuple[dict, str, str]:
         # Referencia ao Ator 2 (celulas):
         # tx_hash da credencial + data_hash para lookup UVerify.
         "ref_celula_tx": _exigir(env, "ATOR2_TX"),
-        "ref_celula_data_hash": data_hash("7891234560020", "CT-BA-2026-04-008"),
+        "ref_celula_data_hash": data_hash(_GTIN_CELULA, serial_celula),
     }
     return payload, serial, gtin
 
@@ -262,17 +298,21 @@ def payload_reciclagem(env: dict[str, str]) -> tuple[dict, str, str]:
     Retorna:
         Tupla (payload_dict, serial, gtin).
     """
-    serial = "RL-SR-2031-08-001"
-    gtin = "7891234560044"
+    sid = _student_id(env)
+    serial = f"{_SERIAL_BASE_RECICL}-{sid}"
+    gtin = _GTIN_RECICL
+    serial_origem = f"{_SERIAL_BASE_ORIGEM}-{sid}"
+    serial_celula = f"{_SERIAL_BASE_CELULA}-{sid}"
+    serial_pack = f"{_SERIAL_BASE_PACK}-{sid}"
     payload = {
         "uverify_template_id": "digitalProductPassport",
         "uverify_update_policy": "restricted",
-        "name": "Reciclagem Pack 75kWh - SR-2031-08-001",
+        "name": f"Reciclagem Pack 75kWh - SR-2031-09-{sid}",
         "issuer": "RecicLar Sorocaba S.A.",
         "gtin": gtin,
         "uv_url_serial": _hash_serial(serial),
         "origin": "Sorocaba, SP, BR",
-        "manufactured": "2031-08-17",
+        "manufactured": "2031-09-17",
         "contact": "logreversa@reciclar.example.br",
         "recycled_content": "N/A (processo de reciclagem)",
         # Materiais recuperados na reciclagem.
@@ -284,11 +324,11 @@ def payload_reciclagem(env: dict[str, str]) -> tuple[dict, str, str]:
         # Cada par (ref_*_tx + ref_*_data_hash) permite ao verificador
         # rastrear cada elo da cadeia.
         "ref_pack_tx": _exigir(env, "ATOR3_TX"),
-        "ref_pack_data_hash": data_hash("7891234560037", "PM-SP-2026-04-155"),
+        "ref_pack_data_hash": data_hash(_GTIN_PACK, serial_pack),
         "ref_celula_tx": _exigir(env, "ATOR2_TX"),
-        "ref_celula_data_hash": data_hash("7891234560020", "CT-BA-2026-04-008"),
+        "ref_celula_data_hash": data_hash(_GTIN_CELULA, serial_celula),
         "ref_origem_tx": _exigir(env, "ATOR1_TX"),
-        "ref_origem_data_hash": data_hash("7891234560013", "ML-JQT-2026-03-042"),
+        "ref_origem_data_hash": data_hash(_GTIN_ORIGEM, serial_origem),
     }
     return payload, serial, gtin
 

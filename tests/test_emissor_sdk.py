@@ -130,8 +130,9 @@ class TestCertificateDataConstruction:
         with patch.dict(os.environ, {"UVERIFY_API_URL": ""}, clear=False):
             tx, dh = emitir_via_sdk("origem", {}, "fake mnemonic words " * 3)
 
-        # Verify data_hash returned matches expected
-        expected_dh = data_hash("7891234560013", "ML-JQT-2026-03-042")
+        # Verify data_hash returned matches expected.
+        # env={} has no WALLET_MNEMONIC, so student suffix is "000000".
+        expected_dh = data_hash("7891234560099", "ML-JQT-2026-05-000000")
         assert dh == expected_dh
 
     @patch("verificador_dpp.emissor_sdk.carregar_carteira")

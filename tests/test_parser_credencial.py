@@ -46,6 +46,7 @@ class TestExtrairCredencial:
         assert cred.fabricado_em == "2026-01-01"
         assert cred.pegada_carbono == "1 kg CO2e"
         assert cred.conteudo_reciclado == "5%"
+        assert cred.metodo_emissao == "metadata"
 
     def test_raises_on_empty_metadata(self, parser):
         with pytest.raises(ValueError, match="nao possui metadados"):
@@ -198,7 +199,7 @@ class TestParseRealPayloads:
         entry = _make_entry(1990, payload)
         cred = parser.extrair_credencial([entry])
 
-        assert cred.nome == "Lote Litio Jequitinhonha 2026-03"
+        assert cred.nome == "Lote Litio Jequitinhonha 2026-05"
         assert cred.emitente == "MineraLitio Jequitinhonha Ltda."
         assert cred.gtin == gtin
         assert cred.referencias == {}
@@ -212,7 +213,7 @@ class TestParseRealPayloads:
         entry = _make_entry(1990, payload)
         cred = parser.extrair_credencial([entry])
 
-        assert cred.nome == "Celulas NMC 811 - Lote BA-2026-04-008"
+        assert cred.nome == "Celulas NMC 811 - Lote BA-2026-05-000000"
         assert "origem_tx" in cred.referencias
         assert "origem_data_hash" in cred.data_hashes
 
@@ -224,7 +225,7 @@ class TestParseRealPayloads:
         entry = _make_entry(1990, payload)
         cred = parser.extrair_credencial([entry])
 
-        assert cred.nome == "Pack EV 75kWh - SP-2026-04-155"
+        assert cred.nome == "Pack EV 75kWh - SP-2026-05-000000"
         assert "celula_tx" in cred.referencias
         assert "celula_data_hash" in cred.data_hashes
 
@@ -236,7 +237,7 @@ class TestParseRealPayloads:
         entry = _make_entry(1990, payload)
         cred = parser.extrair_credencial([entry])
 
-        assert cred.nome == "Reciclagem Pack 75kWh - SR-2031-08-001"
+        assert cred.nome == "Reciclagem Pack 75kWh - SR-2031-09-000000"
         assert len(cred.referencias) == 3
         assert len(cred.data_hashes) == 3
 

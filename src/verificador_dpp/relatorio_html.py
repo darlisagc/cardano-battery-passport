@@ -75,6 +75,24 @@ _CARD_ICONS = {
     "reciclagem": _ICON_RECYCLE,
 }
 
+_ICON_CHAIN_LINK = (
+    '<svg viewBox="0 0 24 24" fill="none" '
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+    'stroke-linejoin="round">'
+    '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>'
+    '<path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>'
+    "</svg>"
+)
+
+_ICON_SHIELD_CHECK = (
+    '<svg viewBox="0 0 24 24" fill="none" '
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+    'stroke-linejoin="round">'
+    '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'
+    '<polyline points="9 12 11 14 15 10"/>'
+    "</svg>"
+)
+
 _CHEVRON_SVG = (
     '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" '
     'stroke="#aaa" stroke-width="2.5" stroke-linecap="round" '
@@ -291,6 +309,7 @@ body {{
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    position: relative;
 }}
 .card-icon {{
     width: 22px;
@@ -372,6 +391,37 @@ body {{
     padding: 1.2rem;
     color: #888;
     font-style: italic;
+}}
+
+/* Emission method badge */
+.emission-badge {{
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    border: 1px solid;
+    position: absolute;
+    top: 8px;
+    right: 12px;
+}}
+.emission-badge svg {{
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+}}
+.emission-badge.metadata {{
+    color: #666;
+    border-color: #ccc;
+    background: #f5f5f5;
+}}
+.emission-badge.uverify {{
+    color: #1565c0;
+    border-color: #90caf9;
+    background: #e3f2fd;
 }}
 
 /* Verified banner */
@@ -511,6 +561,21 @@ body {{
 </body>
 </html>"""
 
+    @staticmethod
+    def _emission_badge(metodo: str | None) -> str:
+        """Gera o HTML do badge de metodo de emissao."""
+        if metodo == "metadata":
+            return (
+                f'<span class="emission-badge metadata">'
+                f"{_ICON_CHAIN_LINK}Metadata</span>"
+            )
+        if metodo == "uverify":
+            return (
+                f'<span class="emission-badge uverify">'
+                f"{_ICON_SHIELD_CHECK}UVerify</span>"
+            )
+        return ""
+
     def _card(
         self, titulo: str, c: CredencialDPP | None, cor: str, tipo: str = ""
     ) -> str:
@@ -534,6 +599,8 @@ body {{
                 f"</div>\n"
                 f"    </div>"
             )
+
+        badge_html = self._emission_badge(c.metodo_emissao)
 
         tx_link_html = ""
         if c.tx_hash:
@@ -585,7 +652,7 @@ body {{
         return (
             f'    <div class="card card-border" style="border-left-color:{cor}">\n'
             f'        <div class="card-header-strip" style="background:{cor}"></div>\n'
-            f'        <div class="card-header">{icon_html}{_esc(titulo)}</div>\n'
+            f'        <div class="card-header">{icon_html}{_esc(titulo)}{badge_html}</div>\n'
             f"{tx_link_html}"
             f'        <div class="card-body">\n'
             f"            <dl>\n"
