@@ -37,9 +37,9 @@ pelo Pack (montagem final), segue a referencia para Celula, depois para Origem,
 montando assim o Passaporte completo da Bateria.
 
 ```mermaid
-flowchart LR
+flowchart TB
     subgraph A1["MineraLitio"]
-        direction TB
+        direction LR
         a1p["Lote Litio Jequitinhonha 2026-03"]
         a1l["Aracuai, MG, BR"]
         a1s["Serial: ML-JQT-2026-03-042"]
