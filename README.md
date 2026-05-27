@@ -1,206 +1,171 @@
-#  DPP Workshop Cardano
+# DPP Workshop Cardano
 
-**De Jequitinhonha à Europa: o Passaporte da Bateria**
+**De Jequitinhonha a Europa: o Passaporte da Bateria**
 
-Starter project em Python 3.11+ que **emite** e **verifica** uma
-cadeia de Passaportes Digitais de Produto (DPP) ancorados em
-Cardano **preprod** — com **duas implementações paralelas** para
-cada operação:
+This repository implements a **Digital Product Passport (DPP)** for electric vehicle batteries, anchored on the **Cardano blockchain** (preprod testnet). The use case tracks a battery's full supply chain — from **lithium extraction** in Jequitinhonha Valley (Minas Gerais, Brazil), through **cell manufacturing** in Camacari (Bahia), **pack assembly** in Sao Bernardo do Campo (Sao Paulo), and finally **recycling** in Sorocaba (Sao Paulo). Each step in this chain is recorded as an on-chain credential that references the previous one, creating an immutable, verifiable trail from raw material to end-of-life.
 
-**Emissão** tem três opções (A, B, C); **verificação** é unificada num único módulo que cobre qualquer mistura:
+The four actors in the supply chain are:
 
-| Emissão | Como | Verificação (única) |
-|---|---|---|
-| **A — Python direto** | `emissor_direto.py` (PyCardano `TransactionBuilder`) | `verificador.py` |
-| **B — Python via SDK** | `emissor_sdk.py` (`uverify-sdk`) | `verificador.py` |
-| **C — UI UVerify** | <https://app.preprod.uverify.io> (sem código) | `verificador.py` |
+| Actor | Company | Role |
+|-------|---------|------|
+| **Ator 1** | MineraLitio Jequitinhonha | Lithium extraction (raw material) |
+| **Ator 2** | CellTech Brasil | NMC 811 cell manufacturing |
+| **Ator 3** | PackMontadora SP | 75 kWh battery pack assembly |
+| **Ator 4** | RecicLar Sorocaba | End-of-life recycling |
 
-> ⚠️ **Rede:** o UVerify público opera em **preprod testnet**. Todo
-> o starter aponta para preprod (Blockfrost preprod, faucet preprod,
-> Cexplorer preprod, API UVerify preprod).
+Each actor **emits** a credential containing product data (GTIN, origin, carbon footprint, material composition) and a reference (`ref_*_tx`) pointing to the previous actor's transaction. The **verificador** then walks this chain backwards — from the pack (or recycling) credential all the way to the lithium origin — to reconstruct and validate the complete passport.
+
+> **Network:** everything runs on **Cardano preprod testnet** — Blockfrost preprod, tADA faucet, Cexplorer preprod, UVerify preprod API. No real ADA is used.
 
 ---
 
-## Pré-requisitos
+## Prerequisites
 
-| Componente | Versão |
-|---|---|
-| Python | 3.11+ |
-| [uv](https://docs.astral.sh/uv/) | gerenciador de pacotes/venv (instale com `curl -LsSf https://astral.sh/uv/install.sh \| sh`) |
-| IDE | VS Code com Python extension, PyCharm Community ou similar |
-| Carteira Cardano | [Eternl](https://eternl.io) ou [Lace](https://lace.io) em **preprod** |
-| tADA | [Faucet preprod](https://docs.cardano.org/cardano-testnets/tools/faucet/) |
-| Blockfrost | Conta gratuita em [blockfrost.io](https://blockfrost.io), projeto **preprod** |
+| Component | Description |
+|-----------|-------------|
+| Python | 3.11 or higher |
+| [uv](https://docs.astral.sh/uv/) | Package/venv manager — install with `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| IDE | VS Code with Python extension, PyCharm Community, or similar |
+| Cardano wallet | [Eternl](https://eternl.io) or [Lace](https://lace.io) set to **preprod** |
+| tADA | Get test ADA from the [preprod faucet](https://docs.cardano.org/cardano-testnets/tools/faucet/) |
+| Blockfrost | Free account at [blockfrost.io](https://blockfrost.io) — create a **preprod** project |
 
 ## Setup
 
 ```bash
-uv sync                  # cria .venv e instala dependencias com lock reproducivel
-cp .env.example .env     # preencha BLOCKFROST_PROJECT_ID e WALLET_MNEMONIC (TESTNET ONLY)
+uv sync                  # creates .venv and installs all dependencies (reproducible via uv.lock)
+cp .env.example .env     # fill in BLOCKFROST_PROJECT_ID and WALLET_MNEMONIC (TESTNET ONLY)
 ```
 
-`uv sync` é idempotente — roda quantas vezes quiser. Não precisa
-ativar o venv: use `uv run <comando>` em qualquer diretório do
-projeto e o uv resolve tudo.
+`uv sync` is idempotent — run it as many times as you want. You don't need to activate the venv manually: just use `uv run <command>` from anywhere in the project and `uv` handles the environment.
 
-## Emissão (Seção 2 do hands-on)
+## Emission
 
-Antes de emitir: tenha tADA na carteira preprod cuja mnemônica está
-em `WALLET_MNEMONIC`.
+Before emitting, make sure you have tADA in the preprod wallet whose mnemonic is in `WALLET_MNEMONIC`.
 
-### Opção A — direto via PyCardano
+There are **three ways** to emit credentials. All three produce on-chain credentials that the verificador can read:
+
+### Option A — Native metadata via PyCardano (`emissor_direto`)
+
+Builds a Cardano transaction directly using PyCardano's `TransactionBuilder`, attaching the DPP payload as **native transaction metadata** (label 721). The credential data is written directly into the transaction — no smart contract involved.
 
 ```bash
 uv run python -m verificador_dpp.emissor_direto --ator origem
-# o tx_hash vai automaticamente para ATOR1_TX no .env, depois:
 uv run python -m verificador_dpp.emissor_direto --ator celula
 uv run python -m verificador_dpp.emissor_direto --ator pack
 uv run python -m verificador_dpp.emissor_direto --ator reciclagem
 ```
 
-### Opção B — via UVerify SDK
+Each command prints the tx hash and automatically updates the `.env` file (`ATOR1_TX`, `ATOR2_TX`, etc.) so the next actor can reference it.
+
+### Option B — UVerify SDK (`emissor_sdk`)
+
+Emits through the [UVerify](https://uverify.io) platform, which uses **Plutus V3 smart contracts** to anchor the credential. The SDK handles the smart contract interaction (building the Plutus transaction, managing state datums, submitting to chain). The emission module includes robust error handling for the preprod environment.
 
 ```bash
 uv run python -m verificador_dpp.emissor_sdk --ator origem
-# o tx_hash vai automaticamente para ATOR1_TX no .env, depois:
 uv run python -m verificador_dpp.emissor_sdk --ator celula
 uv run python -m verificador_dpp.emissor_sdk --ator pack
 uv run python -m verificador_dpp.emissor_sdk --ator reciclagem
 ```
 
-O `emissor_sdk` implementa um fluxo robusto de emissão com **5 camadas
-de proteção**, necessárias porque o UVerify usa smart contracts Plutus V3
-na preprod:
+Same `.env` auto-update behavior as Option A.
 
-1. **Verificação de estado** — detecta e invalida State Datums obsoletos
-   (Bug #54 do UVerify) que causam erros `/ by zero` no backend.
-2. **Preparação de colateral** — garante um UTXO de ≥5 ADA dedicado
-   para execução de scripts Plutus (exigência do protocolo Cardano).
-3. **Tratamento de status codes** — interpreta `COLLATERAL_REQUIRED` e
-   `PENDING_TRANSACTION` na resposta do build e age automaticamente.
-4. **Exponential backoff** — 5 tentativas com delays progressivos
-   (5s → 10s → 20s → 40s → 80s) para erros transientes da API.
-5. **Detecção de carteira vazia** — aborta imediatamente se não houver
-   UTXOs (sem sentido retentear).
+### Option C — UVerify web UI (no code)
 
-Os dois caminhos Python (A e B) usam os mesmos payloads (`_payloads.py`)
-e a mesma carteira HD (`wallet.py`). Cada payload que referencia outro
-ator inclui tanto `ref_*_tx` (tx hash) quanto `ref_*_data_hash`
-(`sha256(gtin+serial)`) — o verificador usa ambos para caminhar a cadeia
-independente do método de emissão.
+1. Open <https://app.preprod.uverify.io> and connect your preprod wallet.
+2. **Issue Certificate** → select the **Digital Product Passport** template.
+3. Fill in the payload fields for the actor (see `_payloads.py` for reference). For actors 2-4, set `ref_*_tx` to the previous actor's tx hash.
+4. **Issue** → sign in your wallet → copy the tx hash to `.env` as `ATOR<N>_TX=...`.
 
-### Opção C — via UI UVerify (sem código)
+### Mixing modes
 
-1. Abra <https://app.preprod.uverify.io>, conecte a carteira preprod.
-2. *Issue Certificate* → template **Digital Product Passport**.
-3. Cole os campos do payload do ator (referência: `_payloads.py` ou
-   Seção 2.2 do hands-on). Para atores 2-4, preencha
-   `ref_*_tx` com os tx hashes anteriores.
-4. **Issue** → assine na carteira → copie o tx hash para o `.env`
-   como `ATOR<N>_TX=…`.
+You can freely mix options A, B, and C within the same supply chain. For example, emit `origem` via direto (A), `celula` via SDK (B), and `pack` via the web UI (C). The verificador handles any combination.
 
-## Verificação (Seção 3 do hands-on)
-
-Pré-requisitos no `.env`: `TX_HASH_PACK` e — se algum ator foi
-emitido via UVerify (B ou C) — `DATA_HASH_PACK`.
+## Verification
 
 ```bash
-uv run python -m verificador_dpp.verificador
-# ou:
-uv run python -m verificador_dpp.verificador <txHashPack>
+uv run python -m verificador_dpp.verificador              # reads TX_HASH_PACK from .env
+uv run python -m verificador_dpp.verificador <tx_hash>    # or pass a tx hash directly
 ```
 
-`verificador` caminha qualquer cadeia, independente de qual
-opção emitiu cada credencial. Para cada tx:
+The verificador walks the credential chain regardless of which emission option was used. Starting from the pack (or recycling) credential, it follows `ref_*_tx` references backwards through the chain — pack → celula → origem — and outputs a consolidated passport with all product data, carbon footprint, and material composition.
 
-1. Tenta a **metadata nativa Cardano** via Blockfrost — funciona se
-   foi emitida pelo `emissor_direto`. Analogia: lê o "anexo" da
-   transação onde os dados do certificado estão gravados.
-2. Se não achar `uverify_template_id`, reúne candidatos a
-   `data_hash` (impressão digital do produto) de três fontes:
-   - **Hint da cadeia** — campo `ref_*_data_hash` da credencial
-     que referencia esta tx (como um "atalho" para o próximo).
-   - **Redeemer on-chain** — extrai o hash do certificado do
-     redeemer (o "comprovante" do smart contract) via Blockfrost.
-   - **Inline datum** — fallback heurístico: vasculha a "ficha de
-     cadastro" do smart contract procurando sequências de 32 bytes.
-3. Testa cada candidato contra a API pública do UVerify via HTTP
-   direto (evita `RecursionError` do SDK causado por respostas
-   com histórico `stateDatum` profundamente aninhado).
-
-Walks `ref_*_tx` + `ref_*_data_hash` references até montar o
-passaporte completo (origem → célula → pack, e opcionalmente reciclagem).
-
-### Atalho — verificação ad-hoc via URL UVerify (sem código)
-
-Para inspecionar **uma** credencial individual via browser (útil
-para demos ou para o consumidor final que só escaneia um QR):
+For quick single-credential checks via browser (useful for demos or QR-code scanning):
 
 ```
 https://app.preprod.uverify.io/verify/<DATA_HASH>
-https://app.preprod.uverify.io/verify/<DATA_HASH>?serial=<SERIAL>
 ```
 
-Funciona apenas em credenciais emitidas via UVerify (B ou C). Não
-monta a cadeia — para reconstruir origem→célula→pack (→reciclagem), use
-`verificador`.
+This only works for credentials emitted via UVerify (B or C) and doesn't reconstruct the full chain.
 
-## Estrutura
+## Project structure
 
 ```
-starter/
-├── pyproject.toml
-├── uv.lock
-├── .env.example
+cardano-battery-passport/
+├── pyproject.toml                          # Project config and dependencies
+├── uv.lock                                 # Pinned dependency versions for reproducible builds
+├── .env.example                            # Template — copy to .env and fill in your keys
 ├── README.md
+├── mao-na-massa.md                         # Step-by-step hands-on guide (pt-BR, 180 min workshop)
+├── arquitetura-dpp.md                      # Architecture deep-dive and design decisions
 └── src/verificador_dpp/
     ├── __init__.py
-    ├── __main__.py              # help dispatcher
-    ├── _payloads.py             # payloads DPP por ator (compartilhado)
-    ├── _html_utils.py           # utilidades HTML compartilhadas (esc_html, cexplorer_link)
-    ├── wallet.py                # HD wallet CIP-1852 (compartilhado)
-    ├── emissor_direto.py        # Opção A — PyCardano TransactionBuilder
-    ├── emissor_sdk.py           # Opção B — uverify-sdk (5-layer robust: state, collateral, retry)
-    ├── verificador.py           # único verificador (cobre A + B + C)
-    ├── parser_credencial.py     # parse de metadata → CredencialDPP + classificar_campos()
-    ├── modelos.py               # dataclasses CredencialDPP / PassaporteBateria
-    ├── relatorio_passaporte.py  # relatório texto pt-BR
-    ├── relatorio_html.py        # relatório HTML da cadeia de suprimentos
-    ├── relatorio_emissao_html.py      # receipt HTML de emissão individual
-    └── relatorio_reciclagem_html.py   # relatório HTML de reciclagem
+    ├── __main__.py                         # Help dispatcher — shows available commands
+    ├── _payloads.py                        # DPP payloads for all 4 actors (shared by A and B)
+    ├── _html_utils.py                      # HTML escape and Cexplorer link helpers
+    ├── wallet.py                           # HD wallet derivation (CIP-1852) from mnemonic
+    ├── emissor_direto.py                   # Option A — builds and submits tx via PyCardano
+    ├── emissor_sdk.py                      # Option B — emits via UVerify SDK (Plutus V3)
+    ├── verificador.py                      # Reads and walks the credential chain (covers A+B+C)
+    ├── parser_credencial.py                # Parses Blockfrost metadata into CredencialDPP objects
+    ├── modelos.py                          # Data classes: CredencialDPP, PassaporteBateria
+    ├── relatorio_passaporte.py             # Text report (pt-BR terminal output)
+    ├── relatorio_html.py                   # HTML report — full supply chain passport
+    ├── relatorio_emissao_html.py           # HTML receipt generated after each emission
+    └── relatorio_reciclagem_html.py        # HTML report for recycling (Actor 4)
 ```
 
-## Dependências principais
+### What each file does
 
-- `pycardano` (>= 0.11) — biblioteca canônica Python para Cardano (constrói, assina e submete transações)
-- `blockfrost-python` (>= 0.6) — cliente REST do Blockfrost (acesso à blockchain via API)
-- `uverify-sdk` (>= 0.1.8) — SDK oficial do UVerify (emissão e verificação de certificados)
-- `python-dotenv` (>= 1.0) — carrega variáveis do `.env`
-- `cbor2 < 6` — decodificador CBOR (formato binário de serialização usado pelo Cardano); pin necessário até o `cbor2pure` suportar a 6.x
+**Core modules:**
 
-Versões exatas ficam pinadas no `uv.lock` (commitado para builds reproduzíveis).
+- **`_payloads.py`** — Defines the DPP data for all 4 actors. Each payload is a dictionary of key-value pairs (product name, GTIN, origin, carbon footprint, materials, and references to previous actors). Both emission options A and B use the same payloads, ensuring identical on-chain data regardless of the emission method.
+
+- **`wallet.py`** — Derives a payment signing key and a preprod address from a 24-word BIP-39 mnemonic using the CIP-1852 HD derivation standard. The resulting address matches what you see in Eternl or Lace. Shared by both emitters.
+
+- **`emissor_direto.py`** (Option A) — Builds a Cardano transaction with PyCardano's `TransactionBuilder`, attaches the DPP payload as native metadata (label 721), signs it with the wallet key, and submits to the network via Blockfrost. Straightforward and fast — no smart contract involved.
+
+- **`emissor_sdk.py`** (Option B) — Emits through the UVerify SDK, which interacts with Plutus V3 smart contracts on preprod. Includes robust handling for state datum cleanup, collateral UTXO preparation, status code interpretation, CIP-8 message signing, and exponential backoff retry. See the inline code comments for implementation details.
+
+- **`verificador.py`** — The unified verifier. Given a tx hash, it fetches the credential from chain (trying native metadata first, then UVerify API), reads the `ref_*_tx` references, and recursively walks the chain until it reaches the origin. Works with any mix of emission methods. Outputs a consolidated passport to the terminal and generates an HTML report.
+
+**Data and parsing:**
+
+- **`modelos.py`** — Defines `CredencialDPP` (a single credential with product data, materials, and chain references) and `PassaporteBateria` (groups origin + celula + pack + optional recycling into one passport).
+
+- **`parser_credencial.py`** — Converts raw Blockfrost metadata (which comes as nested Namespace objects) into structured `CredencialDPP` objects. Handles the `digitalProductPassport` template format and classifies fields by prefix (`ref_*`, `mat_*`, `uv_*`).
+
+**Reports:**
+
+- **`relatorio_passaporte.py`** — Generates the text-based passport report printed to the terminal after verification.
+- **`relatorio_html.py`** — Generates an HTML report with colored cards for each supply chain step (green=origin, blue=cells, yellow=pack, teal=recycling).
+- **`relatorio_emissao_html.py`** — Generates an HTML receipt after each individual emission, with a Cexplorer link to the transaction.
+- **`relatorio_reciclagem_html.py`** — Generates a dedicated HTML report for the recycling credential (Actor 4).
+- **`_html_utils.py`** — Shared helpers: HTML escaping and Cexplorer preprod link generation.
+
+## Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `pycardano` (>= 0.11) | Python library for Cardano — builds, signs, and submits transactions |
+| `blockfrost-python` (>= 0.6) | REST client for the Blockfrost API (blockchain data access) |
+| `uverify-sdk` (>= 0.1.8) | Official UVerify SDK for certificate issuance and verification |
+| `python-dotenv` (>= 1.0) | Loads environment variables from `.env` |
+| `cbor2 < 6` | CBOR decoder (Cardano's binary serialization format); pinned below 6 until `cbor2pure` support lands |
+
+Exact versions are pinned in `uv.lock` (committed for reproducible builds).
 
 ## Troubleshooting
 
-- **`RecursionError` ao verificar credenciais UVerify (B/C):** a API
-  UVerify pode retornar respostas com histórico `stateDatum` muito
-  aninhado (centenas de níveis — como seções dentro de seções). O
-  verificador contorna isso com HTTP direto em vez do SDK.
-- **404 ao seguir a cadeia:** verifique que os payloads incluem
-  `ref_*_data_hash` (necessário para credenciais B/C). Re-emita os
-  atores com a versão atualizada de `_payloads.py`.
-- **500 / `by zero` no emissor_sdk:** a carteira tem um State Datum
-  obsoleto de uma era anterior do Bootstrap (Bug #54 do UVerify preprod).
-  O `emissor_sdk` detecta e invalida esse estado automaticamente via
-  `opt_out()`. Se persistir, crie uma carteira nova ou aguarde o fix
-  server-side do UVerify.
-- **`COLLATERAL_REQUIRED` ao emitir via SDK:** o UVerify usa scripts
-  Plutus V3 que exigem um UTXO de colateral dedicado (≥5 ADA). O
-  `emissor_sdk` prepara esse colateral automaticamente antes da
-  emissão. Se falhar, verifique que a carteira tem saldo suficiente.
-- **`PENDING_TRANSACTION` ao emitir via SDK:** a transação anterior
-  ainda não confirmou. O `emissor_sdk` aguarda 30s e retenta
-  automaticamente. Se persistir entre emissões sequenciais, aumente
-  o intervalo entre comandos (`sleep 30` entre cada ator).
-
-Veja também a Seção 5 do guia hands-on (`mao-na-massa.md`).
+For detailed troubleshooting, error messages, and step-by-step debugging guidance, see **Section 5** of the hands-on guide: [`mao-na-massa.md`](mao-na-massa.md).
