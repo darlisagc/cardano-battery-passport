@@ -47,7 +47,7 @@ Existem **tres formas** de emitir credenciais. Todas produzem credenciais on-cha
 
 ### Opcao A — Metadata nativa via PyCardano (`emissor_direto`)
 
-Constroi uma transacao Cardano diretamente usando o `TransactionBuilder` do PyCardano, anexando o payload DPP como **metadata nativa da transacao** (label 721). Os dados da credencial sao gravados diretamente na transacao — sem smart contract envolvido.
+Constroi uma transacao Cardano diretamente usando o `TransactionBuilder` do PyCardano, anexando o payload DPP como **metadata nativa da transacao** (label 1990). Os dados da credencial sao gravados diretamente na transacao — sem smart contract envolvido.
 
 ```bash
 uv run python -m verificador_dpp.emissor_direto --ator origem
@@ -134,7 +134,7 @@ cardano-battery-passport/
 
 - **`wallet.py`** — Deriva uma chave de assinatura de pagamento e um endereco preprod a partir de um mnemonico BIP-39 de 24 palavras usando o padrao de derivacao HD CIP-1852. O endereco resultante e o mesmo que voce ve no Eternl ou Lace. Compartilhado por ambos os emissores.
 
-- **`emissor_direto.py`** (Opcao A) — Constroi uma transacao Cardano com o `TransactionBuilder` do PyCardano, anexa o payload DPP como metadata nativa (label 721), assina com a chave da carteira e submete na rede via Blockfrost. Direto e rapido — sem smart contract envolvido.
+- **`emissor_direto.py`** (Opcao A) — Constroi uma transacao Cardano com o `TransactionBuilder` do PyCardano, anexa o payload DPP como metadata nativa (label 1990), assina com a chave da carteira e submete na rede via Blockfrost. Direto e rapido — sem smart contract envolvido.
 
 - **`emissor_sdk.py`** (Opcao B) — Emite atraves do SDK UVerify, que interage com smart contracts Plutus V3 na preprod. Inclui tratamento robusto para limpeza de state datum, preparacao de UTXO de colateral, interpretacao de status codes, assinatura de mensagens CIP-8 e retry com exponential backoff. Veja os comentarios inline no codigo para detalhes de implementacao.
 
