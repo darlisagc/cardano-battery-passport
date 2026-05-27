@@ -24,24 +24,22 @@ class CredencialDPP:
     Atributos:
         nome:               nome do produto (campo "name" do payload)
         emitente:           empresa emissora (campo "issuer")
-        gtin:               GTIN — Global Trade Item Number (codigo de barras)
+        gtin:               GTIN — codigo de barras global do produto
         origem:             local de fabricacao/extracao (campo "origin")
         fabricado_em:       data de fabricacao ISO 8601 (campo "manufactured")
         pegada_carbono:     emissoes de CO2 (campo "carbon_footprint")
         conteudo_reciclado: percentual reciclado (campo "recycled_content")
-        materiais:          composicao do produto — chaves extraidas dos
-                            campos "mat_*" do payload
-                            (ex: mat_niquel → {"niquel": "80%"})
-        referencias:        links para outras credenciais na cadeia —
-                            chaves extraidas dos campos
-                            "cert_*_credential_tx" do payload
-                            (ex: cert_origem_credential_tx → tx_hash)
-        data_hashes:        hints de data_hash para lookup UVerify —
-                            chaves extraidas dos campos
-                            "cert_*_data_hash" do payload
-                            (ex: cert_origem_data_hash → sha256(gtin+serial))
-                            Necessarios para encontrar credenciais emitidas
-                            via SDK ou UI na API do UVerify.
+        materiais:          composicao do produto — extraido dos campos
+                            "mat_*" (ex: mat_niquel → {"niquel": "80%"})
+        referencias:        links para outras credenciais na cadeia — extraido
+                            dos campos "cert_*_credential_tx"
+                            (ex: cert_origem_credential_tx → tx_hash).
+                            Analogia: como "ponteiros" para os certificados
+                            anteriores na cadeia de suprimentos.
+        data_hashes:        impressoes digitais (sha256(gtin+serial)) dos
+                            produtos referenciados — extraido dos campos
+                            "cert_*_data_hash". Necessarios para encontrar
+                            credenciais emitidas via SDK ou UI na API UVerify.
     """
 
     nome: str | None
@@ -67,6 +65,9 @@ class PassaporteBateria:
 
     Qualquer elo pode ser None se nao foi encontrado na cadeia
     (o relatorio exibe um aviso nesses casos).
+
+    Analogia: como um "dossiê completo" do produto — junta todos
+    os certificados desde a materia-prima ate o produto final.
     """
 
     origem: CredencialDPP | None

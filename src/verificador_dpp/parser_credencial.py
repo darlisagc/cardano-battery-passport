@@ -1,22 +1,17 @@
 """Parser de credenciais UVerify a partir de metadados Cardano.
 
-Este modulo e responsavel por ler os metadados nativos de uma transacao
-Cardano (obtidos via Blockfrost) e converter para um objeto CredencialDPP.
+Este modulo le os metadados nativos de uma transacao Cardano
+(obtidos via Blockfrost) e converte para um objeto CredencialDPP.
 
-Contexto:
-    Quando uma credencial e emitida pelo `emissor_direto` (opcao A), os
-    dados do DPP sao gravados diretamente na transacao como metadata
-    nativa do Cardano, sob o label 1990. Os metadados incluem o campo
-    `uverify_template_id` para identificar que e uma credencial UVerify.
-
-    O Blockfrost retorna esses metadados como uma lista de entradas
-    (uma por label), onde cada entrada e um Namespace do blockfrost-python
-    (nao um dict). Este parser normaliza esses Namespace objects e
-    procura recursivamente pelo campo `uverify_template_id`.
+Analogia: o Blockfrost devolve os dados "crus" da blockchain (como
+um documento escaneado). Este parser "le" esse documento, encontra
+o certificado DPP dentro dele (identificado pelo campo
+`uverify_template_id`), e organiza os dados em campos estruturados.
 
 Fluxo:
     1. Receber lista de metadados do Blockfrost
     2. Para cada entrada, normalizar Namespace → dict
+       (o Blockfrost retorna objetos especiais, nao dicts)
     3. Buscar recursivamente um dict com `uverify_template_id`
     4. Converter os campos encontrados para CredencialDPP
 """
@@ -31,6 +26,9 @@ TEMPLATE_DPP = "digitalProductPassport"
 
 class ParserCredencial:
     """Converte metadados brutos do Blockfrost em objetos CredencialDPP.
+
+    Analogia: funciona como um "leitor de formularios" — recebe os
+    dados crus da blockchain e extrai os campos do certificado DPP.
 
     Uso:
         parser = ParserCredencial()
@@ -93,6 +91,9 @@ class ParserCredencial:
         inteira e converte tudo para tipos Python nativos (dict, list,
         str, int, etc), para que possamos trabalhar com eles normalmente.
 
+        Analogia: como "traduzir" um documento de um formato proprietario
+        para um formato padrao que qualquer programa consegue ler.
+
         Exemplos:
             Namespace(name="Litio") → {"name": "Litio"}
             [Namespace(a=1)]        → [{"a": 1}]
@@ -143,8 +144,8 @@ class ParserCredencial:
         """Converte um dict de metadata UVerify para CredencialDPP.
 
         Classifica os campos do payload pela convencao de nomes:
-          - cert_*_credential_tx → referencias (links para outras txs)
-          - cert_*_data_hash     → data_hashes (hints para lookup UVerify)
+          - cert_*_credential_tx → referencias (links/"ponteiros" para outras txs)
+          - cert_*_data_hash     → data_hashes (impressoes digitais para lookup UVerify)
           - mat_*                → materiais (composicao do produto)
           - campos padrao        → mapeados diretamente (name, gtin, etc)
 

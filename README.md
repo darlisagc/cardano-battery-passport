@@ -98,17 +98,17 @@ uv run python -m verificador_dpp.verificador <txHashPack>
 `verificador` caminha qualquer cadeia, independente de qual
 opção emitiu cada credencial. Para cada tx:
 
-1. Tenta a metadata nativa Cardano via Blockfrost — funciona se
-   foi emitida pelo `emissor_direto`.
+1. Tenta a **metadata nativa Cardano** via Blockfrost — funciona se
+   foi emitida pelo `emissor_direto`. Analogia: lê o "anexo" da
+   transação onde os dados do certificado estão gravados.
 2. Se não achar `uverify_template_id`, reúne candidatos a
-   `data_hash` de três fontes (em ordem de prioridade):
+   `data_hash` (impressão digital do produto) de três fontes:
    - **Hint da cadeia** — campo `cert_*_data_hash` da credencial
-     que referencia esta tx (propagado via payloads).
-   - **Redeemer on-chain** — lê o datum do redeemer via Blockfrost
-     e extrai o hash do `UVerifyCertificate`
-     (`redeemer.fields[1].list[*].fields[0].bytes`).
-   - **Inline datum** — fallback heurístico: todas as sequências
-     de 32 bytes encontradas no inline datum.
+     que referencia esta tx (como um "atalho" para o próximo).
+   - **Redeemer on-chain** — extrai o hash do certificado do
+     redeemer (o "comprovante" do smart contract) via Blockfrost.
+   - **Inline datum** — fallback heurístico: vasculha a "ficha de
+     cadastro" do smart contract procurando sequências de 32 bytes.
 3. Testa cada candidato contra a API pública do UVerify via HTTP
    direto (evita `RecursionError` do SDK causado por respostas
    com histórico `stateDatum` profundamente aninhado).
@@ -122,7 +122,6 @@ Para inspecionar **uma** credencial individual via browser (útil
 para demos ou para o consumidor final que só escaneia um QR):
 
 ```
-https://app.preprod.uverify.io/verify/by-transaction-hash/<TX_HASH>/<DATA_HASH>
 https://app.preprod.uverify.io/verify/<DATA_HASH>
 https://app.preprod.uverify.io/verify/<DATA_HASH>?serial=<SERIAL>
 ```
@@ -147,19 +146,19 @@ starter/
     ├── emissor_direto.py      # Opção A — PyCardano TransactionBuilder
     ├── emissor_sdk.py         # Opção B — uverify-sdk
     ├── verificador.py   # único verificador (cobre A + B + C)
-    ├── cliente_blockfrost.py  # wrapper Blockfrost (usado por verificador)
-    ├── parser_credencial.py   # parse de metadata UVerify
+    ├── cliente_blockfrost.py  # wrapper Blockfrost (leitura da blockchain)
+    ├── parser_credencial.py   # parse de metadata → CredencialDPP
     ├── relatorio_passaporte.py # relatório pt-BR
     └── modelos.py             # dataclasses CredencialDPP / PassaporteBateria
 ```
 
 ## Dependências principais
 
-- `pycardano` (>= 0.11) — biblioteca canônica Python para Cardano
-- `blockfrost-python` (>= 0.6) — cliente REST do Blockfrost
-- `uverify-sdk` (>= 0.1.8) — SDK oficial do UVerify
+- `pycardano` (>= 0.11) — biblioteca canônica Python para Cardano (constrói, assina e submete transações)
+- `blockfrost-python` (>= 0.6) — cliente REST do Blockfrost (acesso à blockchain via API)
+- `uverify-sdk` (>= 0.1.8) — SDK oficial do UVerify (emissão e verificação de certificados)
 - `python-dotenv` (>= 1.0) — carrega variáveis do `.env`
-- `cbor2 < 6` — pin necessário até o `cbor2pure` suportar a 6.x
+- `cbor2 < 6` — decodificador CBOR (formato binário de serialização usado pelo Cardano); pin necessário até o `cbor2pure` suportar a 6.x
 
 Versões exatas ficam pinadas no `uv.lock` (commitado para builds reproduzíveis).
 
@@ -167,7 +166,8 @@ Versões exatas ficam pinadas no `uv.lock` (commitado para builds reproduzíveis
 
 - **`RecursionError` ao verificar credenciais UVerify (B/C):** a API
   UVerify pode retornar respostas com histórico `stateDatum` muito
-  aninhado. O verificador contorna isso com HTTP direto em vez do SDK.
+  aninhado (centenas de níveis — como seções dentro de seções). O
+  verificador contorna isso com HTTP direto em vez do SDK.
 - **404 ao seguir a cadeia:** verifique que os payloads incluem
   `cert_*_data_hash` (necessário para credenciais B/C). Re-emita os
   atores com a versão atualizada de `_payloads.py`.

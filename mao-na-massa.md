@@ -142,45 +142,45 @@ Termos essenciais usados ao longo do workshop. Consulte sempre que encontrar alg
 
 | Termo | Definição |
 |-------|-----------|
-| **Blockchain** | Registro distribuído e imutável de transações, mantido por uma rede de nós descentralizados. |
-| **Cardano** | Blockchain proof-of-stake usada neste workshop; suporta smart contracts (Plutus/Aiken) e metadata nativa. |
-| **Preprod** | Rede de testes do Cardano que simula a mainnet sem valor real — usamos ela durante todo o workshop. |
-| **tADA** | ADA de teste (sem valor monetário), obtida gratuitamente pelo faucet para pagar taxas na preprod. |
-| **tx / tx_hash** | Transação na blockchain; `tx_hash` é o identificador único (hash SHA-256) de uma transação confirmada. |
-| **UTxO** | *Unspent Transaction Output* — modelo contábil do Cardano: cada "moeda" é um output não gasto de uma tx anterior. |
-| **Metadata** | Dados arbitrários anexados a uma transação Cardano (até 16 KB), usados aqui para gravar o payload DPP. |
-| **Smart contract** | Programa que roda on-chain (validador Plutus); o UVerify usa um para ancorar certificados. |
-| **Datum** | Dados associados a um UTxO em um endereço de script; o validador Plutus os lê ao gastar o UTxO. |
-| **Redeemer** | Argumento fornecido ao gastar um UTxO de script; o verificador extrai dele o hash do certificado. |
+| **Blockchain** | Registro distribuído e imutável de transações, mantido por uma rede de nós descentralizados. Analogia: um "cartório digital" público onde qualquer registro gravado é permanente e visível para todos. |
+| **Cardano** | Blockchain proof-of-stake usada neste workshop; suporta smart contracts (Plutus/Aiken) e metadata nativa. Analogia: o "cartório" específico que escolhemos para registrar os certificados DPP. |
+| **Preprod** | Rede de testes do Cardano que simula a mainnet sem valor real. Analogia: como um "modo sandbox" — funciona igual à rede real, mas com dinheiro fictício para aprender sem risco. |
+| **tADA** | ADA de teste (sem valor monetário), obtida gratuitamente pelo faucet para pagar taxas na preprod. Analogia: "dinheiro de mentira" para pagar as pequenas taxas de registro no sandbox. |
+| **tx / tx_hash** | Transação na blockchain; `tx_hash` é o identificador único (hash SHA-256) de uma transação confirmada. Analogia: como um número de protocolo — cada registro no cartório tem um código único. |
+| **UTxO** | *Unspent Transaction Output* — modelo contábil do Cardano: cada "moeda" é um output não gasto de uma tx anterior. Analogia: em vez de uma "conta com saldo" (como num banco), o Cardano funciona com "fichas" individuais que você recebe e gasta. O PyCardano gerencia isso automaticamente. |
+| **Metadata** | Dados arbitrários anexados a uma transação Cardano (até 16 KB), usados aqui para gravar o payload DPP. Analogia: como um "anexo" num e-mail — a transação é o e-mail, e o certificado DPP vai como anexo. |
+| **Smart contract** | Programa que roda on-chain (validador Plutus); o UVerify usa um para ancorar certificados. Analogia: como um "programa automático" dentro do cartório que aplica regras — garante que os certificados não sejam alterados depois de registrados. |
+| **Datum** | Dados associados a um UTxO em um endereço de script; o validador Plutus os lê ao gastar o UTxO. Analogia: como a "ficha de cadastro" guardada junto com um registro no cartório — contém informações que o smart contract precisa para funcionar. |
+| **Redeemer** | Argumento fornecido ao gastar um UTxO de script; o verificador extrai dele o hash do certificado. Analogia: como o "comprovante" que você apresenta ao cartório para provar que tem direito de acessar aquele registro. |
 
 **DPP (Digital Product Passport)**
 
 | Termo | Definição |
 |-------|-----------|
-| **DPP** | Passaporte Digital de Produto — registro digital que acompanha o ciclo de vida de um produto (origem, fabricação, reciclagem). |
-| **GTIN** | *Global Trade Item Number* (código de barras GS1); identifica o produto globalmente. No workshop usamos GTINs fictícios. |
-| **Cadeia de suprimentos** | Sequência de atores (mineração → fabricação → montagem → reciclagem) que este workshop simula com 4 credenciais encadeadas. |
+| **DPP** | Passaporte Digital de Produto — registro digital que acompanha o ciclo de vida de um produto (origem, fabricação, reciclagem). Analogia: como uma "certidão de nascimento" do produto, registrando de onde veio, como foi feito e por onde passou. |
+| **GTIN** | *Global Trade Item Number* — código de barras GS1 que identifica o produto globalmente. Analogia: aquele número embaixo do código de barras na embalagem. No workshop usamos GTINs fictícios. |
+| **Cadeia de suprimentos** | Sequência de atores (mineração → fabricação → montagem → reciclagem) que este workshop simula com 4 credenciais encadeadas. Analogia: o "caminho" que o produto percorre — cada empresa nesse caminho emite um certificado. |
 
 **UVerify**
 
 | Termo | Definição |
 |-------|-----------|
-| **UVerify** | Plataforma que simplifica a emissão e verificação de certificados em Cardano via API, SDK e UI. |
-| **data_hash** | `sha256(gtin + serial)` — identificador único do produto na plataforma UVerify e na blockchain. |
-| **uv_url_serial** | `sha256(serial)` — hash do número serial, usado na URL de verificação (o serial em si fica off-chain). |
-| **Template** | Esquema de campos pré-definido pelo UVerify (ex: `digitalProductPassport`) que estrutura a metadata do certificado. |
-| **Bootstrap Datum** | Datum de configuração da plataforma UVerify on-chain; ponto de partida para criar State Datums. |
-| **State Datum** | Datum derivado do Bootstrap; funciona como uma "sessão" on-chain para emissões subsequentes de certificados. |
-| **Credencial / Certificado** | Registro DPP ancorado em Cardano — contém o payload de um ator (origem, célula, pack ou reciclagem). |
+| **UVerify** | Plataforma que simplifica a emissão e verificação de certificados em Cardano via API, SDK e UI. Analogia: um "serviço de cartório digital" que cuida da parte complexa da blockchain para você. |
+| **data_hash** | `sha256(gtin + serial)` — identificador único do produto na plataforma UVerify e na blockchain. Analogia: a "impressão digital" do produto — um código gerado a partir do código de barras + número de série que identifica o produto de forma única. |
+| **uv_url_serial** | `sha256(serial)` — hash do número serial, usado na URL de verificação (o serial em si fica off-chain, por privacidade). Analogia: como guardar a "impressão digital" de um documento em vez do documento em si — quem tem o documento pode provar autenticidade sem que o conteúdo fique público. |
+| **Template** | Esquema de campos pré-definido pelo UVerify (ex: `digitalProductPassport`) que estrutura a metadata do certificado. Analogia: como um "formulário" com campos fixos (nome, fabricante, materiais) que você preenche. |
+| **Bootstrap Datum** | Datum de configuração da plataforma UVerify on-chain; ponto de partida para criar State Datums. Analogia: como o "cadastro da empresa" no cartório — configuração global que você não interage diretamente. |
+| **State Datum** | Datum derivado do Bootstrap; funciona como uma "sessão" on-chain para emissões subsequentes de certificados (~2 ADA, reembolsáveis). Analogia: como "abrir uma conta" no cartório — a primeira emissão cria a sessão, e emissões seguintes reutilizam ela e custam menos. |
+| **Credencial / Certificado** | Registro DPP ancorado em Cardano — contém o payload de um ator da cadeia (origem, célula, pack ou reciclagem). |
 
 **Python / Ferramentas**
 
 | Termo | Definição |
 |-------|-----------|
-| **PyCardano** | Biblioteca Python para construir, assinar e submeter transações Cardano — usada nas Opções A e B. |
-| **uv** | Gerenciador de pacotes e ambientes virtuais Python ultrarrápido; substitui `pip` + `venv` neste workshop. |
-| **Blockfrost** | API REST que indexa a blockchain Cardano; usada pelo verificador e pelo emissor direto (Opção A). |
-| **Mnemônico / seed phrase** | Sequência de 24 palavras que gera as chaves criptográficas da carteira (CIP-1852). **Nunca compartilhe o de mainnet.** |
+| **PyCardano** | Biblioteca Python para construir, assinar e submeter transações Cardano — usada nas Opções A e B. Analogia: o "kit de ferramentas" Python que nos permite conversar com a blockchain Cardano. |
+| **uv** | Gerenciador de pacotes e ambientes virtuais Python ultrarrápido; substitui `pip` + `venv` neste workshop. Analogia: um "instalador automático" — rode `uv sync` e ele cuida de todas as dependências. |
+| **Blockfrost** | API REST que indexa a blockchain Cardano; usada pelo verificador e pelo emissor direto (Opção A). Analogia: um "Google da blockchain" — permite consultar e enviar dados sem precisar rodar um nó Cardano local. |
+| **Mnemônico / seed phrase** | Sequência de 24 palavras que gera as chaves criptográficas da carteira (CIP-1852). Analogia: funciona como uma "senha mestre" — quem tem as 24 palavras controla a carteira. **Nunca compartilhe o mnemônico de uma carteira mainnet.** |
 
 ---
 
@@ -301,13 +301,13 @@ Para a lista completa de campos opcionais do template (`model`, `brand_color`, `
 
 ### 1.3 Ancoragem on-chain
 
-O UVerify calcula `hash = sha256(gtin + serialNumber)` localmente e constrói uma transação Cardano que:
+O UVerify calcula `data_hash = sha256(gtin + serialNumber)` localmente (a "impressão digital" do produto) e constrói uma transação Cardano que:
 
-1. **Interage com o smart contract Plutus do UVerify** — gasta um UTxO no endereço de script da plataforma e cria um novo UTxO no mesmo endereço, mantendo o "fio" de anchoring sob controle do validador.  
-2. **Anexa o hash \+ os campos do template como metadados da transação** (via `tx_metadata`).  
+1. **Interage com o smart contract Plutus do UVerify** — gasta um UTxO no endereço de script da plataforma e cria um novo UTxO no mesmo endereço, mantendo o "fio" de anchoring sob controle do validador. Analogia: é como entregar um documento no cartório e receber um novo protocolo — o cartório (smart contract) valida a operação e registra o novo estado.
+2. **Anexa o hash + os campos do template como metadata da transação** (via `tx_metadata`). Analogia: a metadata funciona como o "anexo" da transação, carregando todos os dados do certificado DPP.
 3. **Pede sua carteira para assinar** e transmite na rede preprod.
 
-O serial completo nunca sai do seu navegador — só o hash entra na blockchain. O produto é verificado via URL do tipo `https://app.preprod.uverify.io/verify/<data_hash>/<index>?serial=<serial>`.
+O serial completo nunca sai do seu navegador — só o hash (impressão digital) entra na blockchain. O produto é verificado via URL do tipo `https://app.preprod.uverify.io/verify/<data_hash>?serial=<serial>`.
 
 > **O que acontece por trás (Opções B/C)**
 >
@@ -337,10 +337,10 @@ O verificador Python da Seção 3 segue esses ponteiros (`cert_*_credential_tx` 
 
 | Operação | Quem faz | O que acontece |
 | :---- | :---- | :---- |
-| Emissão (**write**) | Ator com carteira | Assina e submete tx com metadados (Seção 2 — Opção A, B ou C) |
-| Verificação (**read**) | Qualquer pessoa | Lê on-chain — sem chave (Seção 3 — `verificador`) |
+| Emissão (**write**) | Ator com carteira | Assina e submete tx com metadados (Seção 2 — Opção A, B ou C). Analogia: "registrar" o certificado no cartório. |
+| Verificação (**read**) | Qualquer pessoa | Lê on-chain — sem chave (Seção 3 — `verificador`). Analogia: "consultar" um registro público — qualquer pessoa pode verificar. |
 
-É por isso que **só os emissores precisam de carteira**; os verificadores são read-only e podem ser rodados por qualquer parte (regulador, consumidor, recicladora) sem credenciais.
+É por isso que **só os emissores precisam de carteira** (precisam assinar a transação); os verificadores são read-only e podem ser rodados por qualquer parte (regulador, consumidor, recicladora) sem credenciais — assim como qualquer pessoa pode consultar um registro em cartório público.
 
 ### 1.6 Dois padrões de ancoragem on-chain
 
@@ -348,14 +348,14 @@ Existem **duas formas distintas** de ancorar um DPP em Cardano, que definem **on
 
 | Padrão | Onde fica o payload | Como ler | Opções no workshop |
 | :---- | :---- | :---- | :---- |
-| **Metadata nativa Cardano** | Direto na transação, em `auxiliary_data` sob um label numérico (`1990` neste workshop) | Qualquer indexador Cardano: Blockfrost, Yaci Store, db-sync | **Opção A** (`emissor_direto`) |
-| **Anchor \+ off-chain** | Só um hash (`sha256(gtin+serial)`) gravado em datum de um output de script; payload rico vive no banco da UVerify | API REST da UVerify: `verify_by_transaction(tx, hash)` | **Opções B e C** (SDK e UI) |
+| **Metadata nativa Cardano** | Direto na transação, em `auxiliary_data` sob um label numérico (`1990` neste workshop). Analogia: como escrever o documento inteiro na "ata" do cartório. | Qualquer indexador Cardano: Blockfrost, Yaci Store, db-sync | **Opção A** (`emissor_direto`) |
+| **Anchor + off-chain** | Só um hash (impressão digital: `sha256(gtin+serial)`) gravado em datum de um output de script; payload rico vive no servidor do UVerify. Analogia: como registrar apenas a "impressão digital" do documento no cartório, guardando o documento completo em outro lugar. | API REST da UVerify: `verify/{data_hash}` | **Opções B e C** (SDK e UI) |
 
 **Trade-offs:**
 
-|  | Metadata nativa | Anchor \+ off-chain (UVerify) |
+|  | Metadata nativa | Anchor + off-chain (UVerify) |
 | :---- | :---- | :---- |
-| Custo de tx | Maior — paga por byte de metadata | Menor — só o hash \+ envelope on-chain |
+| Custo de tx | Maior — paga por byte de metadata | Menor — só o hash + envelope on-chain |
 | Privacidade | Tudo público on-chain | Só o hash on-chain; payload pode ter ACL no servidor |
 | Dependência externa | Nenhuma — qualquer indexador Cardano | UVerify precisa estar no ar para resolver o payload |
 | Auditabilidade | Total, sem terceiros | Tamper-evidence garantida pelo hash; conteúdo depende do UVerify |
@@ -363,8 +363,8 @@ Existem **duas formas distintas** de ancorar um DPP em Cardano, que definem **on
 
 **Quando usar cada um:**
 
-- **Metadata nativa** — payloads pequenos, dados que precisam ser lidos por **qualquer parte sem dependência** (auditoria pública, regulador, integração customizadas, etc).  
-- **Anchor \+ off-chain** — payloads grandes, dados parcialmente sensíveis (ACL), ou quando você quer **UX pronta** (formulário, página de verificação, QR code).
+- **Metadata nativa** — payloads pequenos, dados que precisam ser lidos por **qualquer parte sem dependência** (auditoria pública, regulador, integração customizadas, etc). Analogia: como uma certidão pública — qualquer pessoa consulta sem intermediário.
+- **Anchor + off-chain** — payloads grandes, dados parcialmente sensíveis (ACL), ou quando você quer **UX pronta** (formulário, página de verificação, QR code). Analogia: como registrar um contrato — o cartório guarda o hash, mas o documento completo fica com as partes.
 
 Os dois padrões **coexistem na mesma cadeia** — neste workshop, atores 1+2 usam metadata nativa, atores 3+4 usam anchor UVerify, e o `verificador` faz fallback automático entre os dois para reconstruir o passaporte completo.
 
@@ -613,10 +613,10 @@ Não escreve uma linha de Python. Use o app oficial do UVerify em [https://app.p
 
 Diferente da emissão (três opções A/B/C), a **verificação é unificada**: um módulo, `verificador.py`, valida qualquer cadeia DPP independente de qual opção emitiu cada credencial. O motivo é simples:
 
-- Credenciais emitidas via `emissor_direto` (Opção A) gravam o payload completo na **metadata nativa** do Cardano — qualquer indexador Cardano lê.  
-- Credenciais emitidas via UVerify (Opções B/C) gravam só um *anchor hash* em **script datum**; o payload rico fica off-chain, indexado pela API do UVerify por `data_hash`.
+- Credenciais emitidas via `emissor_direto` (Opção A) gravam o payload completo na **metadata nativa** do Cardano (como um "anexo" da transação) — qualquer indexador Cardano lê.
+- Credenciais emitidas via UVerify (Opções B/C) gravam só um *anchor hash* (impressão digital) em **script datum**; o payload rico fica off-chain, indexado pela API do UVerify por `data_hash`.
 
-Os dois caminhos vivem na mesma cadeia, e qualquer cadeia real do workshop (recomendação: 1+2 via A, 3 via B, 4 via C) é heterogênea. O `verificador` faz fallback automático entre os dois.
+Os dois caminhos vivem na mesma cadeia, e qualquer cadeia real do workshop (recomendação: 1+2 via A, 3 via B, 4 via C) é heterogênea. O `verificador` faz fallback automático entre os dois — analogia: como um detetive que sabe ler tanto a "ata do cartório" (metadata nativa) quanto consultar o "cofre do cartório" (API UVerify) para encontrar os dados.
 
 ### 3.1 Pré-requisitos no `.env`
 
@@ -632,15 +632,15 @@ DATA_HASH_PACK=<data_hash do pack>     # necessário se o pack foi emitido via U
 
 `verificador.py` é o único verificador do workshop. Para cada transação da cadeia, ele tenta dois caminhos em ordem:
 
-**Caminho 1 — Metadata nativa Cardano** (Blockfrost). Se a tx foi emitida pelo `emissor_direto`, o payload DPP completo está aqui — basta parsear (`parser_credencial.py`) e converter para `CredencialDPP`.
+**Caminho 1 — Metadata nativa Cardano** (Blockfrost). Se a tx foi emitida pelo `emissor_direto`, o payload DPP completo está na metadata da transação (como um "anexo") — basta parsear (`parser_credencial.py`) e converter para `CredencialDPP`.
 
-**Caminho 2 — API do UVerify** (fallback). Se o passo 1 não achou `uverify_template_id`, a tx é provavelmente uma emissão UVerify (SDK ou UI), que guarda só um *anchor hash* em script datum, com o payload off-chain. O verificador então reúne candidatos a `data_hash` de **três fontes** (em ordem de prioridade):
+**Caminho 2 — API do UVerify** (fallback). Se o passo 1 não achou `uverify_template_id`, a tx é provavelmente uma emissão UVerify (SDK ou UI), que guarda só um *anchor hash* (impressão digital) em script datum, com o payload off-chain. O verificador então reúne candidatos a `data_hash` de **três fontes** (em ordem de prioridade):
 
-1. **Hint da cadeia** — campo `cert_*_data_hash` propagado pela credencial que referencia esta tx. É o mais prático: cada credencial já carrega o `sha256(gtin+serial)` do ator que referencia.
-2. **Redeemer on-chain** — o verificador lê o redeemer da transação via Blockfrost e extrai o hash do `UVerifyCertificate` (caminho: `redeemer.fields[1].list[*].fields[0].bytes`). Funciona para todas as opções (A/B/C), inclusive credenciais emitidas via UI.
-3. **Inline datum** — fallback heurístico: extrai todas as sequências de 32 bytes do inline datum. Menos confiável porque o datum contém outros hashes (como `certificate_data_hash` e `id`) que não são o `data_hash` do produto.
+1. **Hint da cadeia** — campo `cert_*_data_hash` propagado pela credencial que referencia esta tx. Analogia: cada certificado já carrega a "impressão digital" do produto que referencia, como um "atalho" para o próximo.
+2. **Redeemer on-chain** — o verificador lê o redeemer da transação via Blockfrost e extrai o hash do `UVerifyCertificate` (caminho: `redeemer.fields[1].list[*].fields[0].bytes`). Analogia: é como ler o "comprovante" que foi apresentado ao smart contract — contém o hash real do certificado.
+3. **Inline datum** — fallback heurístico: extrai todas as sequências de 32 bytes do inline datum. Analogia: como vasculhar a "ficha de cadastro" do smart contract procurando qualquer código que possa ser o hash do produto — menos confiável porque o datum contém outros hashes.
 
-Para cada candidato, o verificador faz um **HTTP GET direto** na API pública do UVerify (`/api/v1/verify/by-transaction-hash/{tx}/{dh}`) em vez de usar o SDK Python — isso evita um `RecursionError` causado pela resposta JSON profundamente aninhada (o campo `stateDatum` pode ter centenas de níveis de histórico). O verificador extrai apenas o campo `extra` (onde está a metadata) via regex, sem parsear o JSON inteiro.
+Para cada candidato, o verificador faz um **HTTP GET direto** na API pública do UVerify (`/api/v1/verify/{data_hash}`) em vez de usar o SDK Python — isso evita um `RecursionError` causado pela resposta JSON profundamente aninhada (o campo `stateDatum` pode ter centenas de níveis de histórico).
 
 Após resolver cada credencial (por qualquer caminho), o verificador segue `cert_*_credential_tx` + `cert_*_data_hash` references para o próximo nó. Repete por 3 atores: **pack → célula → origem**.
 
@@ -648,7 +648,7 @@ Após resolver cada credencial (por qualquer caminho), o verificador segue `cert
 
 ```py
 def buscar_credencial(blockfrost, uverify, parser, tx_hash, data_hash_hint=None):
-    # Caminho 1 — metadata nativa Cardano
+    # Caminho 1 — metadata nativa Cardano (o "anexo" da transação)
     metadata = blockfrost.transaction_metadata(tx_hash)
     if metadata:
         try:
@@ -657,9 +657,9 @@ def buscar_credencial(blockfrost, uverify, parser, tx_hash, data_hash_hint=None)
             pass  # cai no fallback UVerify
 
     # Caminho 2 — UVerify API com candidatos a data_hash de 3 fontes:
-    #   1. hint da credencial anterior (cert_*_data_hash)
-    #   2. redeemer on-chain (hash real do certificado)
-    #   3. inline datum (heurístico — sequências de 32 bytes)
+    #   1. hint da credencial anterior (cert_*_data_hash — o "atalho")
+    #   2. redeemer on-chain (hash real do certificado — o "comprovante")
+    #   3. inline datum (heurístico — vasculha a "ficha de cadastro")
     candidatos = [data_hash_hint] if data_hash_hint else []
     candidatos += extrair_candidatos_data_hash(blockfrost, tx_hash)
     for dh in candidatos:
@@ -842,9 +842,9 @@ uv add "cbor2<6" --upgrade
 RecursionError: maximum recursion depth exceeded
 ```
 
-Ocorre quando o verificador tenta parsear a resposta JSON da API UVerify usando o SDK Python (`verify_by_transaction`). A resposta inclui um campo `stateDatum` profundamente aninhado (centenas de níveis de histórico do smart contract), que excede o limite de recursão do CPython — mesmo com `sys.setrecursionlimit(10000)`, pois o parser JSON em C tem limite próprio.
+Ocorre quando o verificador tenta parsear a resposta JSON da API UVerify usando o SDK Python (`verify_by_transaction`). A resposta inclui um campo `stateDatum` profundamente aninhado (centenas de níveis de histórico do smart contract), que excede o limite de recursão do CPython. Analogia: é como um documento com centenas de "seções dentro de seções" que o Python não consegue ler de uma vez.
 
-**Solução:** o `verificador.py` já contorna isso fazendo uma chamada HTTP direta à API (`/api/v1/verify/by-transaction-hash/{tx}/{dh}`) e extraindo apenas o campo `extra` (onde fica a metadata) via regex, sem parsear o JSON inteiro. Se você estiver escrevendo código customizado, evite usar `verify_by_transaction()` do SDK e use a abordagem HTTP direta.
+**Solução:** o `verificador.py` já contorna isso fazendo uma chamada HTTP direta à API (`/api/v1/verify/{data_hash}`) em vez de usar o SDK — lê apenas os campos necessários sem precisar processar a estrutura inteira. Se você estiver escrevendo código customizado, evite usar `verify_by_transaction()` do SDK e use a abordagem HTTP direta.
 
 ### 5.12 Verificador retorna 404 para credencial emitida via UVerify (SDK ou UI)
 

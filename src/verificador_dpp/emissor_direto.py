@@ -1,14 +1,18 @@
-"""Emissor DPP DIRETO via PyCardano - opcao A do hands-on (Secao 2).
+"""Emissor DPP DIRETO via PyCardano — Opcao A do hands-on (Secao 2).
 
 NAO usa o uverify-sdk. Constroi a transacao do zero com
 TransactionBuilder, anexa o payload DPP como metadata nativa do
 Cardano e submete via Blockfrost.
 
+Analogia: e como escrever o documento inteiro na "ata do cartorio"
+(metadata nativa) — qualquer pessoa que acesse o cartorio (blockchain)
+pode ler os dados sem depender de terceiros.
+
 Uso:
-    PYTHONPATH=src python -m verificador_dpp.emissor_direto --ator origem
-    PYTHONPATH=src python -m verificador_dpp.emissor_direto --ator celula
-    PYTHONPATH=src python -m verificador_dpp.emissor_direto --ator pack
-    PYTHONPATH=src python -m verificador_dpp.emissor_direto --ator reciclagem
+    uv run python -m verificador_dpp.emissor_direto --ator origem
+    uv run python -m verificador_dpp.emissor_direto --ator celula
+    uv run python -m verificador_dpp.emissor_direto --ator pack
+    uv run python -m verificador_dpp.emissor_direto --ator reciclagem
 
 Pre-requisitos no .env (ver .env.example):
     BLOCKFROST_PROJECT_ID  projeto preprod no blockfrost.io
@@ -19,7 +23,8 @@ Fluxo da emissao (cada `--ator <X>`):
     1. Carregar payload DPP do ator       (_payloads.py)
     2. Derivar carteira HD do mnemonico   (wallet.py)
     3. Conectar ao Blockfrost preprod
-    4. Construir tx self-pay com metadata
+    4. Construir tx self-pay com metadata  (como enviar uma carta para
+       si mesmo com o certificado como "anexo")
     5. Assinar com a chave de pagamento
     6. Submeter a rede preprod
 """
@@ -42,9 +47,11 @@ from pycardano import (
 from ._payloads import ATORES, PROXIMO_ATOR_ENV, data_hash
 from .wallet import carregar_carteira
 
-# Label de metadata Cardano. Inteiro arbitrario >= 1 reservado pelo
-# workshop. O verificador escaneia TODOS os labels procurando
-# "uverify_template_id", entao mudar este numero nao quebra nada.
+# Label de metadata Cardano — inteiro arbitrario >= 1 que identifica
+# o "tipo" de anexo na transacao. Analogia: como um numero de
+# formulario no cartorio. O verificador escaneia TODOS os labels
+# procurando "uverify_template_id", entao mudar este numero nao
+# quebra nada.
 METADATA_LABEL = 1990
 
 
@@ -54,17 +61,16 @@ def emitir_direto(
     """Emite a credencial DPP do ator informado.
 
     Devolve (tx_hash, data_hash). O data_hash = sha256(gtin + serial)
-    e o identificador do produto per template UVerify; util para
-    quem quiser inspecionar a credencial pela URL publica do UVerify
-    ou usar como hint inicial no `verificador` quando uma
-    cadeia mistura A com B/C.
+    e a "impressao digital" do produto; util para inspecionar a
+    credencial pela URL publica do UVerify ou como hint inicial no
+    `verificador` quando uma cadeia mistura A com B/C.
     """
 
     # ----------------------------------------------------------------
     # Passo 1 — Construir o payload DPP do ator escolhido.
     # `_payloads.py` contem os dados de cada ator (origem, celula,
     # pack, reciclagem) seguindo o template digitalProductPassport.
-    # Atores 2-4 ainda exigem ATOR<N>_TX no env (para encadear).
+    # Atores 2-4 exigem ATOR<N>_TX no env (para encadear).
     # ----------------------------------------------------------------
     payload, serial, gtin = ATORES[ator](env)
     dh = data_hash(gtin, serial)
@@ -80,6 +86,7 @@ def emitir_direto(
     # Passo 3 — Conectar ao Blockfrost preprod.
     # `BlockFrostChainContext` e a abstracao do PyCardano que
     # consulta UTxOs e submete transacoes via API do Blockfrost.
+    # Analogia: e o nosso "portal de acesso" ao cartorio (blockchain).
     # ----------------------------------------------------------------
     context = BlockFrostChainContext(
         project_id=project_id,
@@ -92,10 +99,11 @@ def emitir_direto(
     #   - output:          NENHUM explicito — `change_address` no
     #                      build_and_sign manda o leftover (input - fee)
     #                      de volta para o nosso proprio endereco
-    #                      (volta como UTxO seu, voce nao perde nada
-    #                      alem do fee de ~0.18 tADA)
     #   - auxiliary_data:  payload DPP como metadata nativa Cardano
-    #                      sob o label 1990
+    #                      (como um "anexo" da transacao) sob o label 1990
+    # Analogia: como enviar uma carta registrada para si mesmo —
+    # o conteudo importante e o "anexo" (metadata), e voce so paga
+    # a taxa de postagem (~0.18 tADA).
     # ----------------------------------------------------------------
     builder = TransactionBuilder(context)
     builder.add_input_address(address)
@@ -116,7 +124,6 @@ def emitir_direto(
     # ----------------------------------------------------------------
     # Passo 6 — Submeter a transacao a rede preprod.
     # Em ~20-40s a tx aparece em Cexplorer preprod.
-    # `submit_tx` retorna None em sucesso; o tx_hash sai de signed_tx.id.
     # ----------------------------------------------------------------
     context.submit_tx(signed_tx)
     return str(signed_tx.id), dh

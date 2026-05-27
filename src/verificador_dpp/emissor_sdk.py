@@ -1,14 +1,18 @@
-"""Emissor DPP via uverify-sdk - opcao B do hands-on (Secao 2).
+"""Emissor DPP via uverify-sdk — Opcao B do hands-on (Secao 2).
 
 Usa o cliente oficial UVerify para construir + submeter a transacao;
 o codigo Python so prove a callback de assinatura, que delega
 ao PyCardano.
 
+Analogia: na Opcao A voce monta a carta inteira e leva ao cartorio.
+Aqui, o UVerify (cartorio) monta a carta para voce — voce so precisa
+assinar para confirmar que e o dono da carteira.
+
 Uso:
-    PYTHONPATH=src python -m verificador_dpp.emissor_sdk --ator origem
-    PYTHONPATH=src python -m verificador_dpp.emissor_sdk --ator celula
-    PYTHONPATH=src python -m verificador_dpp.emissor_sdk --ator pack
-    PYTHONPATH=src python -m verificador_dpp.emissor_sdk --ator reciclagem
+    uv run python -m verificador_dpp.emissor_sdk --ator origem
+    uv run python -m verificador_dpp.emissor_sdk --ator celula
+    uv run python -m verificador_dpp.emissor_sdk --ator pack
+    uv run python -m verificador_dpp.emissor_sdk --ator reciclagem
 
 Pre-requisitos no .env (ver .env.example):
     WALLET_MNEMONIC        24 palavras (TESTNET ONLY)
@@ -17,7 +21,7 @@ Pre-requisitos no .env (ver .env.example):
 Fluxo da emissao (cada `--ator <X>`):
     1. Carregar payload DPP do ator
     2. Derivar carteira HD do mnemonico
-    3. Calcular o data_hash = sha256(gtin + serial)
+    3. Calcular o data_hash = sha256(gtin + serial) (impressao digital)
     4. Embrulhar tudo num CertificateData
     5. Pedir ao SDK que monte+submeta a tx, fornecendo a callback
        de assinatura que assina com a chave HD via PyCardano
@@ -52,6 +56,10 @@ def fazer_callback_assinatura(
     Contrato (verificado contra uverify-sdk 0.1.7):
         sign_tx(unsigned_cbor_hex: str) -> witness_set_cbor_hex: str
 
+    Analogia: o UVerify monta a "carta" (transacao) e nos pede para
+    assinar. Esta callback recebe a carta, assina com nossa chave,
+    e devolve a assinatura para o UVerify enviar ao cartorio (blockchain).
+
     Fluxo da assinatura (4 passos):
         1. Decodificar a tx CBOR-hex que o UVerify acabou de montar
         2. Calcular o hash do transaction_body (32 bytes)
@@ -72,10 +80,12 @@ def fazer_callback_assinatura(
 
         # Passo 4 — Cardano espera vkey Ed25519 normal de 32 bytes
         # (sem o chain code de 32 bytes do CIP-1852 estendido).
+        # Analogia: como mostrar sua identidade (vkey) junto com
+        # a assinatura para provar que voce e quem diz ser.
         vkey = payment_skey.to_verification_key().to_non_extended()
         witness = VerificationKeyWitness(vkey, signature)
 
-        # Devolve o witness set em CBOR-hex - formato que o SDK espera.
+        # Devolve o witness set em CBOR-hex — formato que o SDK espera.
         return TransactionWitnessSet(vkey_witnesses=[witness]).to_cbor_hex()
 
     return sign_tx
@@ -98,7 +108,7 @@ def emitir_via_sdk(
 
     # ----------------------------------------------------------------
     # Passo 3 — Embrulhar tudo num CertificateData:
-    #   - hash:      sha256(gtin + serial) - identificador do produto
+    #   - hash:      sha256(gtin + serial) — impressao digital do produto
     #   - algorithm: SHA-256
     #   - metadata:  o payload DPP (template digitalProductPassport)
     # ----------------------------------------------------------------
@@ -109,12 +119,11 @@ def emitir_via_sdk(
     )
 
     # ----------------------------------------------------------------
-    # Passo 4 — Criar o cliente UVerify, apontando para a URL da API
-    # definida em UVERIFY_API_URL (default do SDK: api.preprod.uverify.io).
-    # O SDK:
-    #   1. POSTa /api/v1/transaction/build  -> recebe tx CBOR-hex
-    #   2. chama nossa sign_tx callback     -> recebe witness CBOR-hex
-    #   3. POSTa /api/v1/transaction/submit -> recebe tx_hash
+    # Passo 4 — Criar o cliente UVerify e emitir.
+    # Analogia: entregamos os dados ao "cartorio" (UVerify), que:
+    #   1. POSTa /api/v1/transaction/build  -> monta a tx
+    #   2. chama nossa sign_tx callback     -> pedimos para assinar
+    #   3. POSTa /api/v1/transaction/submit -> envia a blockchain
     # ----------------------------------------------------------------
     base_url = os.environ.get("UVERIFY_API_URL", "").strip()
     if base_url:

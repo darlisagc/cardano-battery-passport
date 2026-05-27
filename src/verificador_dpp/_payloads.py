@@ -1,27 +1,38 @@
-"""Payloads DPP por ator — dados do Passaporte Digital de Produto.
+"""Payloads DPP (Digital Product Passport) de cada ator da cadeia de suprimentos.
 
-Este modulo define os dados (payloads) de cada ator na cadeia de
-suprimentos da bateria. Sao usados pelos dois emissores:
-  - emissor_direto.py (opcao A — PyCardano)
-  - emissor_sdk.py    (opcao B — UVerify SDK)
+Define os payloads — conjuntos de campos-chave/valor — que cada empresa
+registra na blockchain Cardano como metadata de uma transacao.
 
-Cadeia de suprimentos (4 atores):
+Analogia: cada payload e como um "formulario padronizado" que a empresa
+preenche e registra no cartorio (blockchain). O template
+`digitalProductPassport` define quais campos existem (como um modelo
+de formulario), e cada ator preenche com os dados do seu produto.
+
+Cadeia de suprimentos (supply chain) — 4 atores:
     Ator 1: MineraLitio   — extracao do litio (materia-prima)
     Ator 2: CellTech      — fabricacao das celulas (referencia Ator 1)
     Ator 3: PackMontadora — montagem do pack de bateria (referencia Ator 2)
     Ator 4: RecicLar      — reciclagem (referencia Atores 1, 2 e 3)
 
-Cada payload e um dicionario onde:
-  - Campos padrao DPP: name, issuer, gtin, origin, manufactured, etc.
-  - Campos mat_*: composicao de materiais (ex: mat_niquel, mat_cobalto)
-  - Campos cert_*_credential_tx: tx_hash da credencial do ator anterior
-    na cadeia (permite ao verificador "caminhar" pela cadeia)
-  - Campos cert_*_data_hash: sha256(gtin+serial) do ator referenciado
-    (hint necessario para o verificador encontrar credenciais emitidas
-    via UVerify SDK ou UI, onde o data_hash nao esta no inline datum)
+Estrutura de cada payload:
+  - Dados do produto: name, issuer, gtin, origin, manufactured, etc.
+  - Composicao de materiais: campos mat_* (ex: mat_niquel = "80%")
+  - Referencias (ponteiros) para credenciais anteriores na cadeia:
+    campos cert_*_credential_tx (tx_hash da tx anterior)
+    Analogia: como links que permitem ao verificador "caminhar" pela
+    cadeia de certificados, do produto final ate a materia-prima.
+  - Data hashes (impressoes digitais SHA-256): campos cert_*_data_hash
+    = sha256(gtin + serial) do produto referenciado. Necessarios para
+    lookup na API do UVerify quando a credencial foi emitida via SDK/UI.
+  - Privacy-split: uv_url_serial = sha256(serial). O serial nunca vai
+    para a blockchain — so o hash. Analogia: como guardar a impressao
+    digital em vez do documento original.
 
-Todos os valores sao strings — exigencia do UVerify SDK
-(CertificateData.metadata aceita apenas Dict[str, str]).
+Todos os valores sao strings (exigencia do UVerify SDK / metadata nativa).
+
+Usado pelos dois emissores:
+  - emissor_direto.py (Opcao A — metadata nativa via PyCardano)
+  - emissor_sdk.py    (Opcao B — via UVerify SDK)
 
 Template: `digitalProductPassport`
 Documentacao: https://docs.uverify.io/templates/built-in

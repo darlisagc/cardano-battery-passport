@@ -1,28 +1,73 @@
-"""Verificador DPP — caminha cadeias heterogeneas (A + B/C).
+"""Verificador DPP — verifica a cadeia completa de um passaporte de bateria.
 
-Este modulo e o coracao do workshop. Ele recebe o tx_hash de um pack
-de bateria (Ator 3) e "caminha para tras" pela cadeia de credenciais:
+O QUE FAZ
+---------
+Imagine uma bateria de carro eletrico. Ela passou por tres empresas:
+  1. Mineradora extraiu o litio          (origem)
+  2. Fabrica transformou em celulas      (celula)
+  3. Montadora montou o pack final       (pack)
 
-    pack → celula → origem do litio
+Cada empresa registrou um "certificado digital" na blockchain Cardano
+com os dados do produto (nome, materiais, pegada de carbono, etc.).
+Cada certificado aponta para o certificado anterior, formando uma
+cadeia: pack → celula → origem.
 
-Para cada credencial na cadeia, o verificador tenta duas estrategias
-de leitura, escolhendo automaticamente conforme o metodo de emissao:
+Este verificador recebe o certificado do pack e caminha para tras,
+certificado por certificado, ate chegar na origem do litio —
+reconstruindo todo o historico do produto.
 
-  1. **Metadata nativa Cardano** (via Blockfrost) — funciona para
-     credenciais emitidas pelo `emissor_direto` (Opcao A), que grava
-     os dados diretamente como metadata da transacao (label 1990).
+COMO FUNCIONA
+-------------
+O workshop oferece tres formas de registrar certificados:
+  - Opcao A: grava direto na blockchain (emissor_direto)
+  - Opcao B: usa o SDK do UVerify (emissor_sdk)
+  - Opcao C: usa a interface web do UVerify
 
-  2. **API publica do UVerify** (via HTTP direto) — funciona para
-     credenciais emitidas pelo `emissor_sdk` (Opcao B) ou pela
-     interface web do UVerify (Opcao C). Neste caso, a metadata
-     fica armazenada no backend do UVerify, indexada pelo par
-     (tx_hash, data_hash).
+As opcoes podem ser misturadas — por exemplo, a mineradora pode usar
+a Opcao A, a fabrica a Opcao B, e a montadora a Opcao C. O verificador
+entende todas e caminha a cadeia independente da opcao usada.
 
-O data_hash e o identificador unico do produto no UVerify, calculado
-como sha256(gtin + serial). Para encontra-lo, o verificador usa:
-  - Hints da cadeia (campo cert_*_data_hash da credencial anterior)
-  - Extracao do redeemer on-chain (a fonte mais confiavel)
-  - Extracao heuristica do inline datum (fallback)
+Para cada certificado na cadeia, ele tenta dois caminhos:
+
+  Caminho 1 — Metadata nativa Cardano (leitura direta da blockchain):
+    Usa a API do Blockfrost para ler a metadata nativa da transacao.
+    Funciona para certificados da Opcao A (emissor_direto), onde o
+    payload DPP inteiro fica gravado como metadata nativa da transacao
+    (campo de dados livre que qualquer tx Cardano pode carregar).
+    Analogia: como ler o "anexo" de um documento registrado no cartorio
+    — os dados estao ali, publicos, sem intermediarios.
+
+  Caminho 2 — API publica UVerify (para Opcoes B e C):
+    Se o Caminho 1 nao encontrar uverify_template_id na metadata
+    nativa, significa que o certificado foi registrado via UVerify
+    (SDK ou UI). O payload DPP fica armazenado off-chain no servidor
+    UVerify, indexado por um `data_hash` = sha256(gtin + serial) —
+    a impressao digital unica do produto.
+    Analogia: como um "comprovante de registro" — o cartorio
+    (blockchain) guarda apenas o hash, e o conteudo completo fica
+    num arquivo separado (servidor UVerify).
+    O verificador tenta descobrir esse data_hash de tres formas:
+      a) Hint da credencial anterior na cadeia (campo
+         cert_*_data_hash no payload) — atalho direto.
+      b) Redeemer on-chain — dado que acompanha operacoes no smart
+         contract Plutus do UVerify. Contem o hash real do certificado.
+         Analogia: como um "recibo" que o cartorio emite ao registrar.
+      c) Inline datum — dados Plutus gravados diretamente no UTxO de
+         saida da transacao. O verificador varre buscando sequencias
+         de 32 bytes (tamanho de um SHA-256) — fallback heuristico.
+         Analogia: como procurar uma impressao digital num formulario.
+    Com o data_hash em maos, consulta a API publica do UVerify
+    (GET /api/v1/verify/{data_hash}) para obter o payload completo.
+
+  Depois de encontrar um certificado, o verificador le as referencias
+  para o proximo certificado na cadeia (campos cert_*_credential_tx)
+  e repete o processo ate chegar na origem.
+
+RESULTADO
+---------
+No final, monta um relatorio (PassaporteBateria) mostrando todos os
+dados de cada etapa — quem fabricou, onde, quando, materiais usados,
+pegada de carbono — tudo verificado na blockchain.
 
 Uso:
     uv run python -m verificador_dpp.verificador
@@ -32,8 +77,8 @@ Pre-requisitos no .env:
     BLOCKFROST_PROJECT_ID  projeto preprod do Blockfrost
     TX_HASH_PACK           hash da tx do pack (Ator 3) — ponto de
                            entrada da cadeia de verificacao
-    DATA_HASH_PACK         (opcional) hint do data_hash do pack;
-                           usado se o pack foi emitido via B/C
+    DATA_HASH_PACK         (opcional) data_hash do pack; necessario
+                           se o pack foi emitido via UVerify (B/C)
 """
 
 from __future__ import annotations
@@ -350,9 +395,9 @@ def _verify_by_transaction_direct(
     para evitar o RecursionError causado pela resposta JSON
     profundamente aninhada.
 
-    A API retorna um JSON com muitos campos, mas so precisamos do
-    campo `extra`, que contem a metadata do certificado (payload DPP)
-    como uma string JSON escapada.
+    A API retorna uma lista de certificados para o data_hash dado.
+    Cada item contem um campo `metadata` (string JSON) com o payload DPP.
+    Filtramos pelo `transactionHash` para encontrar a credencial exata.
 
     Parametros:
         tx_hash:   hash da transacao Cardano (64 caracteres hex)
@@ -364,42 +409,54 @@ def _verify_by_transaction_direct(
     Levanta:
         UVerifyApiError: se a API retornar 404 (credencial nao encontrada)
         requests.HTTPError: para outros erros HTTP
-        ValueError: se a resposta nao contiver o campo `extra`
+        ValueError: se a resposta nao contiver metadata valida
     """
-    # Passo 1 — Fazer o request HTTP para a API do UVerify.
-    # O endpoint espera dois parametros: tx_hash e data_hash.
-    url = (
-        f"{_UVERIFY_BASE}/api/v1/verify/"
-        f"by-transaction-hash/{tx_hash}/{data_hash}"
-    )
+    # Passo 1 — Consultar a API do UVerify pelo data_hash.
+    url = f"{_UVERIFY_BASE}/api/v1/verify/{data_hash}"
     resp = requests.get(url, timeout=30)
 
-    # Passo 2 — Verificar se a credencial foi encontrada.
-    # 404 significa que o par (tx_hash, data_hash) nao existe no UVerify.
+    # Passo 2 — Verificar se o data_hash existe no UVerify.
     if resp.status_code == 404:
         raise UVerifyApiError(f"UVerify API error 404: {resp.text}", 404)
     resp.raise_for_status()
 
-    # Passo 3 — Extrair o campo "extra" do JSON bruto usando regex.
-    # NAO fazemos json.loads() no response inteiro porque o campo
-    # "stateDatum" e profundamente aninhado e causa RecursionError.
-    #
-    # O regex captura o conteudo entre aspas do campo "extra",
-    # respeitando caracteres escapados (\" e \\).
-    # Exemplo do que o regex encontra:
-    #   "extra": "{\"name\": \"Litio\", ...}"
-    m = re.search(r'"extra"\s*:\s*"((?:[^"\\]|\\.)*)"', resp.text)
-    if not m:
-        raise ValueError(
-            f"UVerify response para tx {tx_hash} nao contem campo 'extra'."
+    # Passo 3 — A resposta e uma lista de certificados. Cada item tem
+    # campos como `transactionHash`, `metadata`, `hash`, etc.
+    # Aumentamos o limite de recursao temporariamente porque respostas
+    # com stateDatum podem ser profundamente aninhadas.
+    old_limit = sys.getrecursionlimit()
+    sys.setrecursionlimit(max(old_limit, 10000))
+    try:
+        items = json.loads(resp.text)
+    finally:
+        sys.setrecursionlimit(old_limit)
+
+    if not isinstance(items, list) or not items:
+        raise UVerifyApiError(
+            f"UVerify API: resposta inesperada para data_hash {data_hash}", 500
         )
 
-    # Passo 4 — Decodificar a string JSON extraida.
-    # Como o valor de "extra" e uma string JSON dentro de outra string
-    # JSON, as aspas e barras estao duplamente escapadas.
-    # Precisamos reverter o escape: \" → " e \\ → \
-    extra_json = m.group(1).replace('\\"', '"').replace("\\\\", "\\")
-    meta = json.loads(extra_json)
+    # Passo 4 — Filtrar pelo tx_hash. Se nao encontrar correspondencia
+    # exata, usar o primeiro item (mais recente) como fallback.
+    match = None
+    for item in items:
+        if item.get("transactionHash") == tx_hash:
+            match = item
+            break
+    if match is None:
+        match = items[0]
+
+    # Passo 5 — Extrair a metadata do certificado.
+    # O campo `metadata` e uma string JSON com o payload DPP.
+    raw_meta = match.get("metadata")
+    if raw_meta is None:
+        raise ValueError(
+            f"UVerify response para tx {tx_hash} nao contem campo 'metadata'."
+        )
+    if isinstance(raw_meta, str):
+        meta = json.loads(raw_meta)
+    else:
+        meta = raw_meta
 
     # Passo 5 — Classificar os campos da metadata (mesma logica de
     # _credencial_from_uverify_response, mas aqui com meta ja parseada).

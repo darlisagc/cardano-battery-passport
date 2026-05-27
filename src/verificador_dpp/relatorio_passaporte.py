@@ -1,12 +1,17 @@
-"""Monta o relatorio em portugues a partir da cadeia de credenciais.
+"""Relatorio textual do PassaporteBateria (Digital Product Passport).
 
-Este modulo recebe um PassaporteBateria (que contem ate tres credenciais
-encadeadas: origem, celula, pack) e gera um relatorio textual formatado
-em portugues para exibicao no terminal.
+Recebe um objeto PassaporteBateria — que agrupa as tres CredencialDPP
+da cadeia de suprimentos (origem, celula, pack) — e gera um relatorio
+formatado em portugues para exibicao no terminal.
 
-Cada credencial e exibida como uma secao do relatorio com:
-  - Emitente, produto, GTIN, origem, data de fabricacao
-  - Pegada de carbono e conteudo reciclado
+Analogia: o PassaporteBateria e como um "dossie completo" do produto
+que junta todos os certificados verificados on-chain. Este modulo
+formata esse dossie para leitura humana.
+
+Cada CredencialDPP aparece como uma secao mostrando:
+  - Emitente (issuer), produto (name), GTIN (codigo de barras global)
+  - Origem (origin), data de fabricacao (manufactured)
+  - Pegada de carbono (carbon_footprint), conteudo reciclado (recycled_content)
   - Composicao de materiais (campos mat_*)
 """
 
