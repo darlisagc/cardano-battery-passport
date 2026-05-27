@@ -94,6 +94,18 @@ class TestRelatorioHTML:
         assert "flow-step origem" in output
         assert "flow-step celula" in output
         assert "flow-step pack" in output
+        assert "flow-step reciclagem" not in output
+
+    def test_html_reciclagem_card(self):
+        rel = RelatorioHTML()
+        r = _make_cred(nome="Reciclagem Pack")
+        pb = PassaporteBateria(
+            origem=None, celula=None, pack=None, reciclagem=r,
+        )
+        output = rel.gerar(pb)
+        assert "Reciclagem" in output
+        assert "flow-step reciclagem" in output
+        assert "Reciclagem Pack" in output
 
     def test_html_escapes_special_characters(self):
         rel = RelatorioHTML()

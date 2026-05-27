@@ -24,7 +24,7 @@ Neste hands-on, **você interpreta os quatro atores** de uma única cadeia:
 - Em São Bernardo do Campo (SP), a *PackMontadora* monta o pack de 75 kWh e emite **pack**, referenciando *célula*.   
 - Em **2028** o pack viaja num EV brasileiro exportado para a UE; depois da vida útil em algum estacionamento de Brussels, **dez anos depois** o pack volta ao Brasil e cai na *RecicLar*, em Sorocaba (SP), que **verifica a cadeia inteira on-chain antes de processar** — só então emite o DPP de **reciclagem**, fechando o ciclo.
 
-Cada DPP é uma transação no Cardano. As **referências cruzadas** entre as credenciais (`cert_*_credential_tx`) são o que torna a cadeia auditável por *qualquer parte* — regulador europeu, comprador europeu, recicladora brasileira — sem pedir permissão a um gatekeeper.
+Cada DPP é uma transação no Cardano. As **referências cruzadas** entre as credenciais (`ref_*_tx`) são o que torna a cadeia auditável por *qualquer parte* — regulador europeu, comprador europeu, recicladora brasileira — sem pedir permissão a um gatekeeper.
 
 ---
 
@@ -40,7 +40,7 @@ Cada fase abaixo corresponde a uma seção deste documento. Siga em ordem.
 
 #### 2️⃣ TEORIA — Seção 1
 
-Entender o template `digitalProductPassport` do UVerify e a convenção do workshop de encadear credenciais via `cert_*_credential_tx`.
+Entender o template `digitalProductPassport` do UVerify e a convenção do workshop de encadear credenciais via `ref_*_tx`.
 
                 ⬇
 
@@ -109,7 +109,7 @@ Cada emissão imprime um `tx_hash` e um `data_hash` (ambos os emissores Python) 
 | `--ator reciclagem` | `ATOR4_TX` |
 
 💡 **Por que repetir** `TX_HASH_PACK` **para o**  `ATOR3_TX`**?**   
-Porque o verificador da Seção 3 lê `TX_HASH_PACK` (entrada da cadeia da bateria), enquanto o emissor da reciclagem lê `ATOR3_TX` (referência cruzada `cert_pack_credential_tx`). São o mesmo hash, em duas variáveis.
+Porque o verificador da Seção 3 lê `TX_HASH_PACK` (entrada da cadeia da bateria), enquanto o emissor da reciclagem lê `ATOR3_TX` (referência cruzada `ref_pack_tx`). São o mesmo hash, em duas variáveis.
 
 ### Atalho — qual comando rodar quando
 
@@ -291,7 +291,8 @@ UVerify DDP template: [https://docs.uverify.io/templates/built-in](https://docs.
 | `carbon_footprint` | opcional | ex: "4.2 kg CO₂e/kg Li₂CO₃" |
 | `recycled_content` | opcional | ex: "0%" na origem, "12%" no pack |
 | `mat_*` | mapa opcional | composição (ex: `mat_litio: 98%`) |
-| `cert_*` | mapa opcional | certificações. **Também usamos aqui para encadear credenciais** — ver 1.4 |
+| `cert_*` | mapa opcional | certificações reais (ex: `cert_esg_iso14001`, `cert_iso9001`). **Não confundir com referências cruzadas** — ver `ref_*` abaixo |
+| `ref_*` | convenção do workshop | referências cruzadas para credenciais anteriores da cadeia (ex: `ref_origem_tx`, `ref_celula_data_hash`) — ver 1.4 |
 
 Para a lista completa de campos opcionais do template (`model`, `brand_color`, `repair_info`, `recycling`, etc.), consulte a documentação oficial: https://docs.uverify.io/templates/built-in
 
@@ -315,23 +316,23 @@ O serial completo nunca sai do seu navegador — só o hash (impressão digital)
 
 ### 1.4 Encadeamento
 
-O template não tem um campo "credencial anterior" nativo. Usamos o mapa `cert_*` para referenciar transações anteriores, seguindo a convenção:
+O template não tem um campo "credencial anterior" nativo. Usamos o prefixo `ref_*` para referenciar transações anteriores da cadeia de suprimentos, seguindo a convenção:
 
 ```
-cert_origem_credential_tx  → tx hash da credencial de origem (Ator 1)
-cert_celula_credential_tx  → tx hash da credencial de célula (Ator 2)
-cert_pack_credential_tx    → tx hash da credencial de pack (Ator 3)
+ref_origem_tx  → tx hash da credencial de origem (Ator 1)
+ref_celula_tx  → tx hash da credencial de célula (Ator 2)
+ref_pack_tx    → tx hash da credencial de pack (Ator 3)
 ```
 
 Além do tx hash, cada referência inclui um **hint de `data_hash`** — necessário para que o verificador consiga buscar credenciais emitidas via UVerify (Opções B/C) na API:
 
 ```
-cert_origem_data_hash      → sha256(gtin + serial) do Ator 1
-cert_celula_data_hash      → sha256(gtin + serial) do Ator 2
-cert_pack_data_hash        → sha256(gtin + serial) do Ator 3
+ref_origem_data_hash      → sha256(gtin + serial) do Ator 1
+ref_celula_data_hash      → sha256(gtin + serial) do Ator 2
+ref_pack_data_hash        → sha256(gtin + serial) do Ator 3
 ```
 
-O verificador Python da Seção 3 segue esses ponteiros (`cert_*_credential_tx` + `cert_*_data_hash`) para reconstruir a cadeia completa.
+O verificador Python da Seção 3 segue esses ponteiros (`ref_*_tx` + `ref_*_data_hash`) para reconstruir a cadeia completa.
 
 ### 1.5 Emissão vs verificação
 
@@ -407,10 +408,10 @@ Os payloads dos quatro atores ficam em `_payloads.py`, seguindo o template `digi
 | `uverify_update_policy` | sim | `"restricted"` — impede sobrescrita do certificado após emissão |
 | `name`, `issuer`, `gtin` | sim | identidade do lote |
 | `uv_url_serial` | sim | `sha256(serial)` — diferente do `hash` |
-| `cert_*_credential_tx` | convenção do workshop | refs encadeadas (tx hash do ator anterior) |
-| `cert_*_data_hash` | convenção do workshop | sha256(gtin+serial) do ator referenciado — hint para lookup UVerify |
+| `ref_*_tx` | convenção do workshop | refs encadeadas (tx hash do ator anterior) |
+| `ref_*_data_hash` | convenção do workshop | sha256(gtin+serial) do ator referenciado — hint para lookup UVerify |
 | `mat_*` | opcional | composição |
-| `cert_*` | opcional | certificações |
+| `cert_*` | opcional | certificações reais (ex: `cert_esg_iso14001`) |
 | `origin`, `manufactured`, `carbon_footprint`, … | opcional | demais campos do template |
 
 ⚠️ Todos os valores são **strings** — exigência do `CertificateData.metadata: Dict[str, str]` e do limite de 64 bytes por string da metadata Cardano (transaction size 16KB).
@@ -418,21 +419,21 @@ Os payloads dos quatro atores ficam em `_payloads.py`, seguindo o template `digi
 **Encadeamento.** Cada payload aponta para os atores anteriores via dois campos por referência — o **tx hash** (para localizar a transação) e o **data_hash** (hint para lookup UVerify):
 
 ```
-celula       cert_origem_credential_tx  → ATOR1_TX
-             cert_origem_data_hash      → sha256(gtin + serial) do Ator 1
+celula       ref_origem_tx  → ATOR1_TX
+             ref_origem_data_hash      → sha256(gtin + serial) do Ator 1
 
-pack         cert_celula_credential_tx  → ATOR2_TX
-             cert_celula_data_hash      → sha256(gtin + serial) do Ator 2
+pack         ref_celula_tx  → ATOR2_TX
+             ref_celula_data_hash      → sha256(gtin + serial) do Ator 2
 
-reciclagem   cert_pack_credential_tx    → ATOR3_TX
-             cert_pack_data_hash        → sha256(gtin + serial) do Ator 3
-             cert_celula_credential_tx  → ATOR2_TX
-             cert_celula_data_hash      → sha256(gtin + serial) do Ator 2
-             cert_origem_credential_tx  → ATOR1_TX
-             cert_origem_data_hash      → sha256(gtin + serial) do Ator 1
+reciclagem   ref_pack_tx    → ATOR3_TX
+             ref_pack_data_hash        → sha256(gtin + serial) do Ator 3
+             ref_celula_tx  → ATOR2_TX
+             ref_celula_data_hash      → sha256(gtin + serial) do Ator 2
+             ref_origem_tx  → ATOR1_TX
+             ref_origem_data_hash      → sha256(gtin + serial) do Ator 1
 ```
 
-É essa cadeia que o verificador da Seção 3 vai seguir. Os campos `cert_*_data_hash` são essenciais para cadeias mistas — sem eles, o verificador não consegue localizar credenciais emitidas via UVerify (Opções B/C) na API.
+É essa cadeia que o verificador da Seção 3 vai seguir. Os campos `ref_*_data_hash` são essenciais para cadeias mistas — sem eles, o verificador não consegue localizar credenciais emitidas via UVerify (Opções B/C) na API.
 
 ### 2.3 Opção A — Emissor direto (PyCardano)
 
@@ -607,7 +608,7 @@ Não escreve uma linha de Python. Use o app oficial do UVerify em [https://app.p
 
 5. **Copiar o tx hash.** A tela de sucesso mostra o tx hash da emissão. Copie-o e cole no `.env`:
 
-💡 **Encadeamento manual.** Diferente das Opções A e B (onde o `_payloads.py` já injeta as referências cruzadas), na UI você precisa colar os tx hashes anteriores nos campos `cert_*` *à mão*. Isso reforça a noção de que o encadeamento é **convenção**, não mágica.
+💡 **Encadeamento manual.** Diferente das Opções A e B (onde o `_payloads.py` já injeta as referências cruzadas), na UI você precisa colar os tx hashes anteriores nos campos `ref_*` *à mão*. Isso reforça a noção de que o encadeamento é **convenção**, não mágica.
 
 ## Seção 3 — Verificando credenciais via Python
 
@@ -626,7 +627,7 @@ TX_HASH_PACK=<ATOR3_TX>
 DATA_HASH_PACK=<data_hash do pack>     # necessário se o pack foi emitido via UVerify (B/C)
 ```
 
-`TX_HASH_PACK` é a entrada da cadeia. `DATA_HASH_PACK` é usado como **hint inicial** para o pack quando ele veio do UVerify (a API do UVerify pede pelo hash do documento). Para os atores 2 e 1 da cadeia, o `data_hash` é propagado automaticamente via os campos `cert_*_data_hash` de cada credencial, e também pode ser extraído dos redeemers on-chain.
+`TX_HASH_PACK` é a entrada da cadeia. `DATA_HASH_PACK` é usado como **hint inicial** para o pack quando ele veio do UVerify (a API do UVerify pede pelo hash do documento). Para os atores 2 e 1 da cadeia, o `data_hash` é propagado automaticamente via os campos `ref_*_data_hash` de cada credencial, e também pode ser extraído dos redeemers on-chain.
 
 ### 3.2 verificador.py — fluxo completo
 
@@ -636,13 +637,13 @@ DATA_HASH_PACK=<data_hash do pack>     # necessário se o pack foi emitido via U
 
 **Caminho 2 — API do UVerify** (fallback). Se o passo 1 não achou `uverify_template_id`, a tx é provavelmente uma emissão UVerify (SDK ou UI), que guarda só um *anchor hash* (impressão digital) em script datum, com o payload off-chain. O verificador então reúne candidatos a `data_hash` de **três fontes** (em ordem de prioridade):
 
-1. **Hint da cadeia** — campo `cert_*_data_hash` propagado pela credencial que referencia esta tx. Analogia: cada certificado já carrega a "impressão digital" do produto que referencia, como um "atalho" para o próximo.
+1. **Hint da cadeia** — campo `ref_*_data_hash` propagado pela credencial que referencia esta tx. Analogia: cada certificado já carrega a "impressão digital" do produto que referencia, como um "atalho" para o próximo.
 2. **Redeemer on-chain** — o verificador lê o redeemer da transação via Blockfrost e extrai o hash do `UVerifyCertificate` (caminho: `redeemer.fields[1].list[*].fields[0].bytes`). Analogia: é como ler o "comprovante" que foi apresentado ao smart contract — contém o hash real do certificado.
 3. **Inline datum** — fallback heurístico: extrai todas as sequências de 32 bytes do inline datum. Analogia: como vasculhar a "ficha de cadastro" do smart contract procurando qualquer código que possa ser o hash do produto — menos confiável porque o datum contém outros hashes.
 
 Para cada candidato, o verificador faz um **HTTP GET direto** na API pública do UVerify (`/api/v1/verify/{data_hash}`) em vez de usar o SDK Python — isso evita um `RecursionError` causado pela resposta JSON profundamente aninhada (o campo `stateDatum` pode ter centenas de níveis de histórico).
 
-Após resolver cada credencial (por qualquer caminho), o verificador segue `cert_*_credential_tx` + `cert_*_data_hash` references para o próximo nó. Repete por 3 atores: **pack → célula → origem**.
+Após resolver cada credencial (por qualquer caminho), o verificador segue `ref_*_tx` + `ref_*_data_hash` references para o próximo nó. Repete por 3 atores: **pack → célula → origem**.
 
 **Trecho-chave** (`verificador.py`):
 
@@ -657,7 +658,7 @@ def buscar_credencial(blockfrost, uverify, parser, tx_hash, data_hash_hint=None)
             pass  # cai no fallback UVerify
 
     # Caminho 2 — UVerify API com candidatos a data_hash de 3 fontes:
-    #   1. hint da credencial anterior (cert_*_data_hash — o "atalho")
+    #   1. hint da credencial anterior (ref_*_data_hash — o "atalho")
     #   2. redeemer on-chain (hash real do certificado — o "comprovante")
     #   3. inline datum (heurístico — vasculha a "ficha de cadastro")
     candidatos = [data_hash_hint] if data_hash_hint else []
@@ -739,16 +740,16 @@ A credencial do Ator 4 já foi emitida na Seção 2 quando você rodou `--ator r
     "issuer": "RecicLar Sorocaba S.A.",
     "gtin": "7891234560044",
     ...
-    "cert_pack_credential_tx":   ATOR3_TX,        # tx hash do pack
-    "cert_pack_data_hash":       sha256(gtin+serial do Ator 3),
-    "cert_celula_credential_tx": ATOR2_TX,        # tx hash da célula
-    "cert_celula_data_hash":     sha256(gtin+serial do Ator 2),
-    "cert_origem_credential_tx": ATOR1_TX,        # tx hash da origem
-    "cert_origem_data_hash":     sha256(gtin+serial do Ator 1)
+    "ref_pack_tx":   ATOR3_TX,        # tx hash do pack
+    "ref_pack_data_hash":       sha256(gtin+serial do Ator 3),
+    "ref_celula_tx": ATOR2_TX,        # tx hash da célula
+    "ref_celula_data_hash":     sha256(gtin+serial do Ator 2),
+    "ref_origem_tx": ATOR1_TX,        # tx hash da origem
+    "ref_origem_data_hash":     sha256(gtin+serial do Ator 1)
 }
 ```
 
-A diferença em relação aos outros atores: a recicladora referencia **todas** as credenciais anteriores, não só a imediatamente prévia. Cada referência inclui o par `cert_*_credential_tx` (tx hash) + `cert_*_data_hash` (sha256(gtin+serial) do ator referenciado) — o data_hash é essencial para que o verificador consiga localizar credenciais emitidas via UVerify (Opções B/C). Após a reciclagem o pack deixa de existir; o DPP de reciclagem se torna o ponteiro definitivo para tudo o que veio antes.
+A diferença em relação aos outros atores: a recicladora referencia **todas** as credenciais anteriores, não só a imediatamente prévia. Cada referência inclui o par `ref_*_tx` (tx hash) + `ref_*_data_hash` (sha256(gtin+serial) do ator referenciado) — o data_hash é essencial para que o verificador consiga localizar credenciais emitidas via UVerify (Opções B/C). Após a reciclagem o pack deixa de existir; o DPP de reciclagem se torna o ponteiro definitivo para tudo o que veio antes.
 
 ### 4.3 Ciclo completo — diagrama
 
@@ -788,7 +789,7 @@ A cadeia forma um grafo acíclico verificável por qualquer parte — desde o re
 Erro típico do `blockfrost-python`: `ApiError: 403 ... project does not match network`.
 
 - Blockfrost project deve ser **preprod** (project ID começa com `preprod`).  
-- `cliente_blockfrost.py` usa `ApiUrls.preprod.value` (`https://cardano-preprod.blockfrost.io/api/v0`). Não troque para `ApiUrls.mainnet` ou `ApiUrls.preview`.  
+- O projeto usa `ApiUrls.preprod.value` (`https://cardano-preprod.blockfrost.io/api/v0`). Não troque para `ApiUrls.mainnet` ou `ApiUrls.preview`. *(Nota: `cliente_blockfrost.py` foi removido; a configuração Blockfrost agora é feita diretamente nos módulos `emissor_direto.py` e `verificador.py`.)*  
 - Nunca misture um project ID `mainnet` com transações preprod — vai falhar silenciosamente em alguns endpoints.
 
 ### 5.4 Rate limit Blockfrost (plano free)
@@ -856,5 +857,5 @@ Significa que o verificador não encontrou a credencial na API do UVerify. Causa
 
 - **`data_hash` errado** — a API do UVerify busca por `data_hash` (= `sha256(gtin + serial)`), não pelo tx hash. Se o `data_hash` usado na busca não corresponde ao que foi usado na emissão, retorna 404.
 - **Credencial emitida pela UI** — quando emitida pela UI do UVerify, o `data_hash` pode diferir do calculado por `sha256(gtin + serial)` se os campos foram preenchidos com valores ligeiramente diferentes (espaços, acentos, etc). Verifique a URL de verificação na tela de sucesso do UVerify (formato: `https://app.preprod.uverify.io/verify/<data_hash>/<index>?serial=<serial>`).
-- **Campos `cert_*_data_hash` ausentes nos payloads** — em cadeias mistas (A + B/C), cada credencial precisa carregar o `cert_*_data_hash` do ator que referencia. Sem esse hint, o verificador tenta extrair o hash do redeemer on-chain (mais lento) ou do inline datum (menos confiável). Confira que `_payloads.py` inclui esses campos.
+- **Campos `ref_*_data_hash` ausentes nos payloads** — em cadeias mistas (A + B/C), cada credencial precisa carregar o `ref_*_data_hash` do ator que referencia. Sem esse hint, o verificador tenta extrair o hash do redeemer on-chain (mais lento) ou do inline datum (menos confiável). Confira que `_payloads.py` inclui esses campos.
 - **Blockfrost ainda não indexou** — após emissão, aguarde pelo menos 1 bloco (~20-40s em preprod) antes de verificar. Se acabou de emitir e recebe 404, espere e tente novamente. 

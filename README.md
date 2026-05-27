@@ -70,8 +70,8 @@ uv run python -m verificador_dpp.emissor_sdk --ator reciclagem
 
 Os dois caminhos Python usam os mesmos payloads (`_payloads.py`) e a
 mesma carteira HD (`wallet.py`). Cada payload que referencia outro ator
-inclui tanto `cert_*_credential_tx` (tx hash) quanto
-`cert_*_data_hash` (`sha256(gtin+serial)`) — o verificador usa ambos
+inclui tanto `ref_*_tx` (tx hash) quanto
+`ref_*_data_hash` (`sha256(gtin+serial)`) — o verificador usa ambos
 para caminhar a cadeia independente do método de emissão.
 
 ### Opção C — via UI UVerify (sem código)
@@ -80,7 +80,7 @@ para caminhar a cadeia independente do método de emissão.
 2. *Issue Certificate* → template **Digital Product Passport**.
 3. Cole os campos do payload do ator (referência: `_payloads.py` ou
    Seção 2.2 do hands-on). Para atores 2-4, preencha
-   `cert_*_credential_tx` com os tx hashes anteriores.
+   `ref_*_tx` com os tx hashes anteriores.
 4. **Issue** → assine na carteira → copie o tx hash para o `.env`
    como `ATOR<N>_TX=…`.
 
@@ -103,7 +103,7 @@ opção emitiu cada credencial. Para cada tx:
    transação onde os dados do certificado estão gravados.
 2. Se não achar `uverify_template_id`, reúne candidatos a
    `data_hash` (impressão digital do produto) de três fontes:
-   - **Hint da cadeia** — campo `cert_*_data_hash` da credencial
+   - **Hint da cadeia** — campo `ref_*_data_hash` da credencial
      que referencia esta tx (como um "atalho" para o próximo).
    - **Redeemer on-chain** — extrai o hash do certificado do
      redeemer (o "comprovante" do smart contract) via Blockfrost.
@@ -113,8 +113,8 @@ opção emitiu cada credencial. Para cada tx:
    direto (evita `RecursionError` do SDK causado por respostas
    com histórico `stateDatum` profundamente aninhado).
 
-Walks `cert_*_credential_tx` + `cert_*_data_hash` references
-até montar o passaporte completo (origem → célula → pack).
+Walks `ref_*_tx` + `ref_*_data_hash` references até montar o
+passaporte completo (origem → célula → pack, e opcionalmente reciclagem).
 
 ### Atalho — verificação ad-hoc via URL UVerify (sem código)
 
@@ -127,7 +127,7 @@ https://app.preprod.uverify.io/verify/<DATA_HASH>?serial=<SERIAL>
 ```
 
 Funciona apenas em credenciais emitidas via UVerify (B ou C). Não
-monta a cadeia — para reconstruir origem→célula→pack, use
+monta a cadeia — para reconstruir origem→célula→pack (→reciclagem), use
 `verificador`.
 
 ## Estrutura
@@ -140,16 +140,19 @@ starter/
 ├── README.md
 └── src/verificador_dpp/
     ├── __init__.py
-    ├── __main__.py            # help dispatcher
-    ├── _payloads.py           # payloads DPP por ator (compartilhado)
-    ├── wallet.py              # HD wallet CIP-1852 (compartilhado)
-    ├── emissor_direto.py      # Opção A — PyCardano TransactionBuilder
-    ├── emissor_sdk.py         # Opção B — uverify-sdk
-    ├── verificador.py   # único verificador (cobre A + B + C)
-    ├── cliente_blockfrost.py  # wrapper Blockfrost (leitura da blockchain)
-    ├── parser_credencial.py   # parse de metadata → CredencialDPP
-    ├── relatorio_passaporte.py # relatório pt-BR
-    └── modelos.py             # dataclasses CredencialDPP / PassaporteBateria
+    ├── __main__.py              # help dispatcher
+    ├── _payloads.py             # payloads DPP por ator (compartilhado)
+    ├── _html_utils.py           # utilidades HTML compartilhadas (esc_html, cexplorer_link)
+    ├── wallet.py                # HD wallet CIP-1852 (compartilhado)
+    ├── emissor_direto.py        # Opção A — PyCardano TransactionBuilder
+    ├── emissor_sdk.py           # Opção B — uverify-sdk
+    ├── verificador.py           # único verificador (cobre A + B + C)
+    ├── parser_credencial.py     # parse de metadata → CredencialDPP + classificar_campos()
+    ├── modelos.py               # dataclasses CredencialDPP / PassaporteBateria
+    ├── relatorio_passaporte.py  # relatório texto pt-BR
+    ├── relatorio_html.py        # relatório HTML da cadeia de suprimentos
+    ├── relatorio_emissao_html.py      # receipt HTML de emissão individual
+    └── relatorio_reciclagem_html.py   # relatório HTML de reciclagem
 ```
 
 ## Dependências principais
@@ -169,7 +172,7 @@ Versões exatas ficam pinadas no `uv.lock` (commitado para builds reproduzíveis
   aninhado (centenas de níveis — como seções dentro de seções). O
   verificador contorna isso com HTTP direto em vez do SDK.
 - **404 ao seguir a cadeia:** verifique que os payloads incluem
-  `cert_*_data_hash` (necessário para credenciais B/C). Re-emita os
+  `ref_*_data_hash` (necessário para credenciais B/C). Re-emita os
   atores com a versão atualizada de `_payloads.py`.
 
 Veja também a Seção 5 do guia hands-on (`mao-na-massa.md`).

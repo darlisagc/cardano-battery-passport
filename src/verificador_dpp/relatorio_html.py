@@ -7,8 +7,11 @@ Cada CredencialDPP aparece como um card com borda colorida:
   - Verde: Origem (litio)
   - Azul:  Celula (fabricacao)
   - Amarelo: Pack (montagem)
+  - Teal:  Reciclagem (fim de vida) [opcional]
 """
 
+from ._html_utils import cexplorer_link as _cexplorer_link
+from ._html_utils import esc_html as _esc
 from .modelos import CredencialDPP, PassaporteBateria
 
 # -- Inline SVG icons (no external dependencies) -----------------------------
@@ -54,10 +57,22 @@ _ICON_PACK = (
     "</svg>"
 )
 
+_ICON_RECYCLE = (
+    '<svg viewBox="0 0 24 24" class="card-icon" fill="none" '
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+    'stroke-linejoin="round">'
+    '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>'
+    '<path d="M21 3v5h-5"/>'
+    '<path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>'
+    '<path d="M3 21v-5h5"/>'
+    "</svg>"
+)
+
 _CARD_ICONS = {
     "origem": _ICON_PICKAXE,
     "celula": _ICON_FACTORY,
     "pack": _ICON_PACK,
+    "reciclagem": _ICON_RECYCLE,
 }
 
 _CHEVRON_SVG = (
@@ -99,8 +114,33 @@ class RelatorioHTML:
         cards.append(
             self._card("Montagem do pack", passaporte.pack, "#f9a825", "pack")
         )
+        if passaporte.reciclagem is not None:
+            cards.append(
+                self._card(
+                    "Reciclagem", passaporte.reciclagem, "#00695c", "reciclagem"
+                )
+            )
 
         cards_html = "\n".join(cards)
+
+        # Build supply chain flow diagram (dynamic step count).
+        flow_steps = [
+            ("origem", "Origem"),
+            ("celula", "C&eacute;lula"),
+            ("pack", "Pack"),
+        ]
+        if passaporte.reciclagem is not None:
+            flow_steps.append(("reciclagem", "Reciclagem"))
+
+        flow_parts = []
+        for i, (css_class, label) in enumerate(flow_steps):
+            if i > 0:
+                flow_parts.append(f'        <span class="flow-arrow">{_CHEVRON_SVG}</span>')
+            flow_parts.append(
+                f'        <div class="flow-step {css_class}">'
+                f'<span class="step-number">{i + 1}</span>{label}</div>'
+            )
+        flow_html = "\n".join(flow_parts)
 
         return f"""<!DOCTYPE html>
 <html lang="pt-BR">
@@ -202,9 +242,10 @@ body {{
     position: relative;
     z-index: 1;
 }}
-.flow-step.origem {{ background: #2e7d32; }}
-.flow-step.celula {{ background: #1565c0; }}
-.flow-step.pack   {{ background: #f9a825; color: #333; }}
+.flow-step.origem      {{ background: #2e7d32; }}
+.flow-step.celula      {{ background: #1565c0; }}
+.flow-step.pack        {{ background: #f9a825; color: #333; }}
+.flow-step.reciclagem  {{ background: #00695c; }}
 .step-number {{
     display: inline-flex;
     align-items: center;
@@ -447,11 +488,7 @@ body {{
 </div>
 <div class="container">
     <div class="flow">
-        <div class="flow-step origem"><span class="step-number">1</span>Origem</div>
-        <span class="flow-arrow">{_CHEVRON_SVG}</span>
-        <div class="flow-step celula"><span class="step-number">2</span>C&eacute;lula</div>
-        <span class="flow-arrow">{_CHEVRON_SVG}</span>
-        <div class="flow-step pack"><span class="step-number">3</span>Pack</div>
+{flow_html}
     </div>
 {cards_html}
     <div class="verified-banner">
@@ -560,22 +597,3 @@ body {{
         )
 
 
-def _esc(text: str) -> str:
-    """Escapa caracteres HTML especiais."""
-    return (
-        text.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace('"', "&quot;")
-    )
-
-
-def _cexplorer_link(tx_hash: str) -> str:
-    """Gera um link HTML clicavel para o Cexplorer preprod."""
-    short = tx_hash[:16] + "..." if len(tx_hash) > 16 else tx_hash
-    url = f"https://preprod.cexplorer.io/tx/{_esc(tx_hash)}"
-    return (
-        f'<a href="{url}" target="_blank" '
-        f'rel="noopener noreferrer" title="{_esc(tx_hash)}">'
-        f"{_esc(short)}</a>"
-    )

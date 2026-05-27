@@ -9,6 +9,8 @@ visual propria (teal) e secoes especificas para materiais recuperados
 e rastreabilidade reversa (referencias aos 3 atores anteriores).
 """
 
+from ._html_utils import cexplorer_link as _cexplorer_link
+from ._html_utils import esc_html as _esc
 from .modelos import CredencialDPP
 
 # -- Inline SVG icons (no external dependencies) -----------------------------
@@ -556,8 +558,8 @@ body {{
             }
             badges = []
             for chave, ref_tx_hash in c.referencias.items():
-                # chave format: "pack_credential_tx" → extract "pack"
-                nome = chave.replace("_credential_tx", "")
+                # chave format: "pack_tx" → extract "pack"
+                nome = chave.replace("_tx", "")
                 label = label_map.get(nome, nome)
                 short_hash = ref_tx_hash[:16] + "..." if len(ref_tx_hash) > 16 else ref_tx_hash
                 hash_html = _cexplorer_link(ref_tx_hash)
@@ -608,22 +610,3 @@ body {{
         return f"{card}\n{banner}"
 
 
-def _esc(text: str) -> str:
-    """Escapa caracteres HTML especiais."""
-    return (
-        text.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace('"', "&quot;")
-    )
-
-
-def _cexplorer_link(tx_hash: str) -> str:
-    """Gera um link HTML clicavel para o Cexplorer preprod."""
-    short = tx_hash[:16] + "..." if len(tx_hash) > 16 else tx_hash
-    url = f"https://preprod.cexplorer.io/tx/{_esc(tx_hash)}"
-    return (
-        f'<a href="{url}" target="_blank" '
-        f'rel="noopener noreferrer" title="{_esc(tx_hash)}">'
-        f"{_esc(short)}</a>"
-    )

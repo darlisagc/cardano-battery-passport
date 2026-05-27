@@ -159,7 +159,7 @@ class TestPayloadOrigem:
     def test_no_credential_references(self):
         """Ator 1 should NOT reference any previous actor."""
         payload, _, _ = payload_origem()
-        cred_refs = [k for k in payload if k.endswith("_credential_tx")]
+        cred_refs = [k for k in payload if k.startswith("ref_") and k.endswith("_tx")]
         assert cred_refs == [], f"Unexpected credential refs: {cred_refs}"
 
     def test_no_data_hash_refs(self):
@@ -189,12 +189,12 @@ class TestPayloadOrigem:
 class TestPayloadCelula:
     def test_references_ator1(self):
         payload, _, _ = payload_celula(FAKE_ENV)
-        assert payload["cert_origem_credential_tx"] == "aaa111"
+        assert payload["ref_origem_tx"] == "aaa111"
 
     def test_data_hash_for_ator1(self):
         payload, _, _ = payload_celula(FAKE_ENV)
         expected = data_hash("7891234560013", "ML-JQT-2026-03-042")
-        assert payload["cert_origem_data_hash"] == expected
+        assert payload["ref_origem_data_hash"] == expected
 
     def test_gtin_and_serial(self):
         _, serial, gtin = payload_celula(FAKE_ENV)
@@ -212,12 +212,12 @@ class TestPayloadCelula:
 class TestPayloadPack:
     def test_references_ator2(self):
         payload, _, _ = payload_pack(FAKE_ENV)
-        assert payload["cert_celula_credential_tx"] == "bbb222"
+        assert payload["ref_celula_tx"] == "bbb222"
 
     def test_data_hash_for_ator2(self):
         payload, _, _ = payload_pack(FAKE_ENV)
         expected = data_hash("7891234560020", "CT-BA-2026-04-008")
-        assert payload["cert_celula_data_hash"] == expected
+        assert payload["ref_celula_data_hash"] == expected
 
     def test_gtin_and_serial(self):
         _, serial, gtin = payload_pack(FAKE_ENV)
@@ -235,19 +235,19 @@ class TestPayloadPack:
 class TestPayloadReciclagem:
     def test_references_all_three_actors(self):
         payload, _, _ = payload_reciclagem(FAKE_ENV)
-        assert payload["cert_pack_credential_tx"] == "ccc333"
-        assert payload["cert_celula_credential_tx"] == "bbb222"
-        assert payload["cert_origem_credential_tx"] == "aaa111"
+        assert payload["ref_pack_tx"] == "ccc333"
+        assert payload["ref_celula_tx"] == "bbb222"
+        assert payload["ref_origem_tx"] == "aaa111"
 
     def test_data_hashes_for_all_three(self):
         payload, _, _ = payload_reciclagem(FAKE_ENV)
-        assert payload["cert_pack_data_hash"] == data_hash(
+        assert payload["ref_pack_data_hash"] == data_hash(
             "7891234560037", "PM-SP-2026-04-155"
         )
-        assert payload["cert_celula_data_hash"] == data_hash(
+        assert payload["ref_celula_data_hash"] == data_hash(
             "7891234560020", "CT-BA-2026-04-008"
         )
-        assert payload["cert_origem_data_hash"] == data_hash(
+        assert payload["ref_origem_data_hash"] == data_hash(
             "7891234560013", "ML-JQT-2026-03-042"
         )
 
@@ -299,16 +299,16 @@ class TestChainConsistency:
     """Verify that cross-references between payloads are consistent."""
 
     def test_celula_data_hash_matches_origem(self):
-        """celula's cert_origem_data_hash must match data_hash(gtin, serial)
+        """celula's ref_origem_data_hash must match data_hash(gtin, serial)
         of the actual origem payload."""
         _, serial_o, gtin_o = payload_origem()
         payload_c, _, _ = payload_celula(FAKE_ENV)
-        assert payload_c["cert_origem_data_hash"] == data_hash(gtin_o, serial_o)
+        assert payload_c["ref_origem_data_hash"] == data_hash(gtin_o, serial_o)
 
     def test_pack_data_hash_matches_celula(self):
         _, serial_c, gtin_c = payload_celula(FAKE_ENV)
         payload_p, _, _ = payload_pack(FAKE_ENV)
-        assert payload_p["cert_celula_data_hash"] == data_hash(gtin_c, serial_c)
+        assert payload_p["ref_celula_data_hash"] == data_hash(gtin_c, serial_c)
 
     def test_reciclagem_data_hashes_match_all(self):
         _, serial_o, gtin_o = payload_origem()
@@ -316,9 +316,9 @@ class TestChainConsistency:
         _, serial_p, gtin_p = payload_pack(FAKE_ENV)
         payload_r, _, _ = payload_reciclagem(FAKE_ENV)
 
-        assert payload_r["cert_origem_data_hash"] == data_hash(gtin_o, serial_o)
-        assert payload_r["cert_celula_data_hash"] == data_hash(gtin_c, serial_c)
-        assert payload_r["cert_pack_data_hash"] == data_hash(gtin_p, serial_p)
+        assert payload_r["ref_origem_data_hash"] == data_hash(gtin_o, serial_o)
+        assert payload_r["ref_celula_data_hash"] == data_hash(gtin_c, serial_c)
+        assert payload_r["ref_pack_data_hash"] == data_hash(gtin_p, serial_p)
 
     def test_all_gtins_are_unique(self):
         gtins = set()

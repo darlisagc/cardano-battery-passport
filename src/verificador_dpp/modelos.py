@@ -32,13 +32,13 @@ class CredencialDPP:
         materiais:          composicao do produto — extraido dos campos
                             "mat_*" (ex: mat_niquel → {"niquel": "80%"})
         referencias:        links para outras credenciais na cadeia — extraido
-                            dos campos "cert_*_credential_tx"
-                            (ex: cert_origem_credential_tx → tx_hash).
+                            dos campos "ref_*_tx"
+                            (ex: ref_origem_tx → tx_hash).
                             Analogia: como "ponteiros" para os certificados
                             anteriores na cadeia de suprimentos.
         data_hashes:        impressoes digitais (sha256(gtin+serial)) dos
                             produtos referenciados — extraido dos campos
-                            "cert_*_data_hash". Necessarios para encontrar
+                            "ref_*_data_hash". Necessarios para encontrar
                             credenciais emitidas via SDK ou UI na API UVerify.
         tx_hash:            hash da transacao Cardano onde esta credencial
                             foi registrada (opcional — preenchido pelo
@@ -61,20 +61,23 @@ class CredencialDPP:
 
 @dataclass(frozen=True)
 class PassaporteBateria:
-    """Passaporte consolidado: as tres credenciais encadeadas da cadeia.
+    """Passaporte consolidado: credenciais encadeadas da cadeia de suprimentos.
 
-    Agrupa os tres elos da cadeia de suprimentos verificados:
-        origem: Ator 1 — extracao do litio (MineraLitio)
-        celula: Ator 2 — fabricacao das celulas (CellTech)
-        pack:   Ator 3 — montagem do pack de bateria (PackMontadora)
+    Agrupa os elos da cadeia de suprimentos verificados:
+        origem:      Ator 1 — extracao do litio (MineraLitio)
+        celula:      Ator 2 — fabricacao das celulas (CellTech)
+        pack:        Ator 3 — montagem do pack de bateria (PackMontadora)
+        reciclagem:  Ator 4 — reciclagem do pack (RecicLar) [opcional]
 
     Qualquer elo pode ser None se nao foi encontrado na cadeia
     (o relatorio exibe um aviso nesses casos).
 
     Analogia: como um "dossiê completo" do produto — junta todos
-    os certificados desde a materia-prima ate o produto final.
+    os certificados desde a materia-prima ate o produto final,
+    incluindo opcionalmente o ciclo de fim de vida (reciclagem).
     """
 
     origem: CredencialDPP | None
     celula: CredencialDPP | None
     pack: CredencialDPP | None
+    reciclagem: CredencialDPP | None = None

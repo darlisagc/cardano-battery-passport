@@ -89,7 +89,7 @@ class TestRelatorioEmissaoHTML:
 
     def test_referencias_section(self):
         payload = _sample_payload()
-        payload["cert_origem_credential_tx"] = "abc123def456abc123def456abc123def456abc123def456abc123def456abc123de"
+        payload["ref_origem_tx"] = "abc123def456abc123def456abc123def456abc123def456abc123def456abc123de"
         rel = RelatorioEmissaoHTML()
         html = rel.gerar("celula", payload, TX_HASH, DATA_HASH)
         assert "Referencias na Cadeia" in html

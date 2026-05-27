@@ -19,9 +19,9 @@ def _make_cred(**overrides) -> CredencialDPP:
             "cobalto_recuperado": "4.6 kg",
         },
         referencias={
-            "pack_credential_tx": "abc123def456",
-            "celula_credential_tx": "def789abc012",
-            "origem_credential_tx": "ghi345jkl678",
+            "pack_tx": "abc123def456",
+            "celula_tx": "def789abc012",
+            "origem_tx": "ghi345jkl678",
         },
         data_hashes={
             "pack_data_hash": "hash_pack",

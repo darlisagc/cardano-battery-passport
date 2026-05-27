@@ -25,10 +25,10 @@ rastrear toda a historia de uma bateria, desde a mineracao ate a reciclagem.
 
 Essas referencias sao feitas por dois campos:
 
-- **`cert_*_credential_tx`** — O TX hash (numero de protocolo) do registro da
+- **`ref_*_tx`** — O TX hash (numero de protocolo) do registro da
   empresa anterior na blockchain. Com ele, voce pode localizar exatamente aquele
   registro.
-- **`cert_*_data_hash`** — A impressao digital SHA-256 que permite buscar os
+- **`ref_*_data_hash`** — A impressao digital SHA-256 que permite buscar os
   dados completos na API do UVerify (util quando os dados nao estao diretamente
   na blockchain).
 
@@ -66,12 +66,12 @@ flowchart LR
         a4s["Serial: RL-SR-2031-08-001"]
     end
 
-    A1 -- "cert_origem_credential_tx\ncert_origem_data_hash" --> A2
-    A2 -- "cert_celula_credential_tx\ncert_celula_data_hash" --> A3
-    A3 -- "cert_pack_credential_tx\ncert_pack_data_hash" --> A4
+    A1 -- "ref_origem_tx\nref_origem_data_hash" --> A2
+    A2 -- "ref_celula_tx\nref_celula_data_hash" --> A3
+    A3 -- "ref_pack_tx\nref_pack_data_hash" --> A4
 
-    A1 -. "cert_origem_credential_tx\ncert_origem_data_hash" .-> A4
-    A2 -. "cert_celula_credential_tx\ncert_celula_data_hash" .-> A4
+    A1 -. "ref_origem_tx\nref_origem_data_hash" .-> A4
+    A2 -. "ref_celula_tx\nref_celula_data_hash" .-> A4
 
     style A1 fill:#d4edda,stroke:#28a745
     style A2 fill:#cce5ff,stroke:#007bff
@@ -86,9 +86,9 @@ flowchart LR
 - Vermelho — Reciclagem (fim de vida)
 
 > **Nota:** RecicLar referencia os 3 atores anteriores
-> (`cert_origem_*`, `cert_celula_*`, `cert_pack_*`),
+> (`ref_origem_*`, `ref_celula_*`, `ref_pack_*`),
 > permitindo rastreabilidade completa em uma unica consulta.
-> Cada referencia inclui o par `_credential_tx` (TX hash na blockchain)
+> Cada referencia inclui o par `_tx` (TX hash na blockchain)
 > e `_data_hash` (sha256(gtin+serial) para lookup na API UVerify).
 
 ### Lendo as setas do diagrama
@@ -113,8 +113,8 @@ flowchart RL
     O["Origem\n(mineracao)"]
 
     V -- "1. Comeca aqui\n(recebe TX hash do Pack)" --> P
-    P -- "2. Le cert_celula_credential_tx\ne segue a referencia" --> C
-    C -- "3. Le cert_origem_credential_tx\ne segue a referencia" --> O
+    P -- "2. Le ref_celula_tx\ne segue a referencia" --> C
+    C -- "3. Le ref_origem_tx\ne segue a referencia" --> O
 
     style V fill:#e2d5f1,stroke:#6f42c1
     style P fill:#fff3cd,stroke:#ffc107
@@ -305,7 +305,7 @@ sequenceDiagram
     end
 
     Note over V: Passo 2/4 — Seguir referencia para Celula
-    Note over V: tx = cred_pack.referencias["celula_credential_tx"]
+    Note over V: tx = cred_pack.referencias["celula_tx"]
     Note over V: hint = cred_pack.data_hashes["celula_data_hash"]
     V->>BF: transaction_metadata(tx_hash_celula)
     alt Caminho 1 — Metadata nativa (Opcao A)
@@ -319,7 +319,7 @@ sequenceDiagram
     end
 
     Note over V: Passo 3/4 — Seguir referencia para Origem
-    Note over V: tx = cred_celula.referencias["origem_credential_tx"]
+    Note over V: tx = cred_celula.referencias["origem_tx"]
     Note over V: hint = cred_celula.data_hashes["origem_data_hash"]
     V->>BF: transaction_metadata(tx_hash_origem)
     alt Caminho 1 — Metadata nativa (Opcao A)
@@ -355,7 +355,7 @@ Se o Caminho 1 nao encontrou dados, o verificador precisa descobrir o data_hash
 candidatos de **3 fontes**, da mais confiavel para a menos confiavel:
 
 1. **(a) Hint** — A credencial anterior na cadeia ja pode ter fornecido o
-   data_hash como referencia (campo `cert_*_data_hash`). E o atalho mais
+   data_hash como referencia (campo `ref_*_data_hash`). E o atalho mais
    direto: "a empresa anterior ja me disse qual e a chave do cofre."
 
 2. **(b) Redeemer on-chain** — A funcao `_extrair_hashes_do_redeemer()` le a
@@ -405,7 +405,7 @@ flowchart TB
         auxA["AuxiliaryData"]
         metaA["Metadata"]
         labelA["Label 1990"]
-        payA["Payload completo\nuverify_template_id: digitalProductPassport\nname, issuer, gtin, origin, ...\ncert_origem_credential_tx: tx_hash\ncert_origem_data_hash: sha256\nmat_niquel: 80%\n..."]
+        payA["Payload completo\nuverify_template_id: digitalProductPassport\nname, issuer, gtin, origin, ...\nref_origem_tx: tx_hash\nref_origem_data_hash: sha256\nmat_niquel: 80%\n..."]
 
         bodyA --- auxA
         auxA --- metaA
@@ -453,7 +453,7 @@ flowchart TB
 ### Detalhes de cada formato
 
 **Opcao A — metadata nativa:**
-- O payload inteiro (todos os campos `name`, `issuer`, `gtin`, `mat_*`, `cert_*`, etc.)
+- O payload inteiro (todos os campos `name`, `issuer`, `gtin`, `mat_*`, `ref_*`, `cert_*`, etc.)
   e armazenado diretamente na metadata da transacao sob o label `1990`.
 - Leitura: `Blockfrost.transaction_metadata(tx_hash)` retorna o dict completo.
 - Vantagem: auto-contido, nenhuma dependencia externa para verificacao.
@@ -488,7 +488,6 @@ uma credencial para a proxima como hints para acelerar o lookup UVerify.
 | `parser_credencial.py` | Conversao de metadados brutos em `CredencialDPP` |
 | `modelos.py` | Dataclasses: `CredencialDPP`, `PassaporteBateria` |
 | `relatorio_passaporte.py` | Geracao do relatorio final em portugues |
-| `cliente_blockfrost.py` | Wrapper de leitura para a API Blockfrost |
 
 ---
 
@@ -579,4 +578,4 @@ via APIs.**
 | **Mnemonic** | Frase de 24 palavras que gera a carteira (wallet) Cardano. A partir dela derivam-se as chaves publica e privada para assinar transacoes. |
 | **Wallet** | Carteira digital que armazena as chaves criptograficas necessarias para assinar transacoes na blockchain. |
 | **Label 1990** | Numero arbitrario escolhido para identificar metadados DPP nas transacoes Cardano deste sistema. |
-| **Credential_tx** | Campo nos payloads que armazena o TX hash da credencial de outro ator na cadeia (referencia cruzada). |
+| **ref_*_tx** | Campo nos payloads que armazena o TX hash da credencial de outro ator na cadeia (referencia cruzada). Anteriormente chamado `cert_*_credential_tx`. |

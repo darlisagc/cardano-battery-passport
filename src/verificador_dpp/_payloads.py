@@ -18,10 +18,10 @@ Estrutura de cada payload:
   - Dados do produto: name, issuer, gtin, origin, manufactured, etc.
   - Composicao de materiais: campos mat_* (ex: mat_niquel = "80%")
   - Referencias (ponteiros) para credenciais anteriores na cadeia:
-    campos cert_*_credential_tx (tx_hash da tx anterior)
+    campos ref_*_tx (tx_hash da tx anterior)
     Analogia: como links que permitem ao verificador "caminhar" pela
     cadeia de certificados, do produto final ate a materia-prima.
-  - Data hashes (impressoes digitais SHA-256): campos cert_*_data_hash
+  - Data hashes (impressoes digitais SHA-256): campos ref_*_data_hash
     = sha256(gtin + serial) do produto referenciado. Necessarios para
     lookup na API do UVerify quando a credencial foi emitida via SDK/UI.
   - Privacy-split: uv_url_serial = sha256(serial). O serial nunca vai
@@ -100,7 +100,7 @@ def payload_origem(_env: dict[str, str] | None = None) -> tuple[dict, str, str]:
     """Retorna o payload DPP do Ator 1 (MineraLitio — origem do litio).
 
     Este e o primeiro ator da cadeia, entao nao referencia nenhuma
-    credencial anterior (sem campos cert_*_credential_tx).
+    credencial anterior (sem campos ref_*_tx).
 
     Retorna:
         Tupla (payload_dict, serial, gtin).
@@ -127,9 +127,9 @@ def payload_origem(_env: dict[str, str] | None = None) -> tuple[dict, str, str]:
         "mat_litio_carbonato": "98%",
         "mat_impurezas_ferro": "0.3%",
         "mat_impurezas_sodio": "0.8%",
-        # Certificacoes (note: esses cert_* NAO terminam em
-        # _credential_tx nem _data_hash, entao o parser os ignora
-        # como referencias — sao apenas labels informativos).
+        # Certificacoes (note: esses cert_* NAO comecam com ref_,
+        # entao o parser os ignora como referencias — sao apenas
+        # labels informativos de certificacoes reais).
         "cert_esg_iso14001": "ISO 14001:2015",
         "cert_licenca_ambiental": "SUPRAM-JQT-LI-042-2024",
     }
@@ -140,16 +140,16 @@ def payload_origem(_env: dict[str, str] | None = None) -> tuple[dict, str, str]:
 # Ator 2 — CellTech (fabricacao de celulas)
 #
 # Segundo elo. Referencia o Ator 1 (origem do litio) via:
-#   - cert_origem_credential_tx: tx_hash da credencial do Ator 1
-#   - cert_origem_data_hash: sha256(gtin+serial) do Ator 1
+#   - ref_origem_tx: tx_hash da credencial do Ator 1
+#   - ref_origem_data_hash: sha256(gtin+serial) do Ator 1
 # =====================================================================
 
 def payload_celula(env: dict[str, str]) -> tuple[dict, str, str]:
     """Retorna o payload DPP do Ator 2 (CellTech — celulas NMC 811).
 
     Referencia o Ator 1 (origem) para rastreabilidade. Os campos
-    cert_origem_credential_tx e cert_origem_data_hash permitem ao
-    verificador seguir a cadeia ate a origem do litio.
+    ref_origem_tx e ref_origem_data_hash permitem ao verificador
+    seguir a cadeia ate a origem do litio.
 
     Parametros:
         env: variaveis de ambiente (precisa de ATOR1_TX).
@@ -183,8 +183,8 @@ def payload_celula(env: dict[str, str]) -> tuple[dict, str, str]:
         "cert_iatf16949": "IATF 16949:2016",
         # Referencia ao Ator 1 (origem do litio):
         # tx_hash da credencial + data_hash para lookup UVerify.
-        "cert_origem_credential_tx": _exigir(env, "ATOR1_TX"),
-        "cert_origem_data_hash": data_hash("7891234560013", "ML-JQT-2026-03-042"),
+        "ref_origem_tx": _exigir(env, "ATOR1_TX"),
+        "ref_origem_data_hash": data_hash("7891234560013", "ML-JQT-2026-03-042"),
     }
     return payload, serial, gtin
 
@@ -193,8 +193,8 @@ def payload_celula(env: dict[str, str]) -> tuple[dict, str, str]:
 # Ator 3 — PackMontadora (montagem do pack de bateria)
 #
 # Terceiro elo. Referencia o Ator 2 (celulas) via:
-#   - cert_celula_credential_tx: tx_hash da credencial do Ator 2
-#   - cert_celula_data_hash: sha256(gtin+serial) do Ator 2
+#   - ref_celula_tx: tx_hash da credencial do Ator 2
+#   - ref_celula_data_hash: sha256(gtin+serial) do Ator 2
 # =====================================================================
 
 def payload_pack(env: dict[str, str]) -> tuple[dict, str, str]:
@@ -237,8 +237,8 @@ def payload_pack(env: dict[str, str]) -> tuple[dict, str, str]:
         "cert_iec62660": "IEC 62660-2/3",
         # Referencia ao Ator 2 (celulas):
         # tx_hash da credencial + data_hash para lookup UVerify.
-        "cert_celula_credential_tx": _exigir(env, "ATOR2_TX"),
-        "cert_celula_data_hash": data_hash("7891234560020", "CT-BA-2026-04-008"),
+        "ref_celula_tx": _exigir(env, "ATOR2_TX"),
+        "ref_celula_data_hash": data_hash("7891234560020", "CT-BA-2026-04-008"),
     }
     return payload, serial, gtin
 
@@ -281,14 +281,14 @@ def payload_reciclagem(env: dict[str, str]) -> tuple[dict, str, str]:
         "mat_cobalto_recuperado": "4.6 kg",
         "mat_cobre_recuperado": "9.2 kg",
         # Referencias a todos os atores anteriores:
-        # Cada par (credential_tx + data_hash) permite ao verificador
+        # Cada par (ref_*_tx + ref_*_data_hash) permite ao verificador
         # rastrear cada elo da cadeia.
-        "cert_pack_credential_tx": _exigir(env, "ATOR3_TX"),
-        "cert_pack_data_hash": data_hash("7891234560037", "PM-SP-2026-04-155"),
-        "cert_celula_credential_tx": _exigir(env, "ATOR2_TX"),
-        "cert_celula_data_hash": data_hash("7891234560020", "CT-BA-2026-04-008"),
-        "cert_origem_credential_tx": _exigir(env, "ATOR1_TX"),
-        "cert_origem_data_hash": data_hash("7891234560013", "ML-JQT-2026-03-042"),
+        "ref_pack_tx": _exigir(env, "ATOR3_TX"),
+        "ref_pack_data_hash": data_hash("7891234560037", "PM-SP-2026-04-155"),
+        "ref_celula_tx": _exigir(env, "ATOR2_TX"),
+        "ref_celula_data_hash": data_hash("7891234560020", "CT-BA-2026-04-008"),
+        "ref_origem_tx": _exigir(env, "ATOR1_TX"),
+        "ref_origem_data_hash": data_hash("7891234560013", "ML-JQT-2026-03-042"),
     }
     return payload, serial, gtin
 

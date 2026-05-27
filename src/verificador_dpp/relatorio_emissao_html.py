@@ -9,6 +9,8 @@ feedback visual imediato ao participante do workshop.
 
 from __future__ import annotations
 
+from ._html_utils import esc_html as _esc
+
 # -- Actor configuration -------------------------------------------------------
 
 _ACTOR_CONFIG: dict[str, dict[str, str]] = {
@@ -541,22 +543,22 @@ body {{
         )
 
     def _referencias(self, payload: dict) -> str:
-        """Gera a secao de referencias (campos cert_*_credential_tx)."""
+        """Gera a secao de referencias (campos ref_*_tx)."""
         label_map = {
             "pack": "Pack",
             "celula": "Celula",
             "origem": "Origem",
         }
         refs = {
-            k[len("cert_"):]: str(v)
+            k[len("ref_"):]: str(v)
             for k, v in payload.items()
-            if k.startswith("cert_") and k.endswith("_credential_tx")
+            if k.startswith("ref_") and k.endswith("_tx")
         }
         if not refs:
             return ""
         badges = []
         for chave, ref_tx in refs.items():
-            nome = chave.replace("_credential_tx", "")
+            nome = chave.replace("_tx", "")
             label = label_map.get(nome, nome)
             short = ref_tx[:16] + "..." if len(ref_tx) > 16 else ref_tx
             url = f"https://preprod.cexplorer.io/tx/{_esc(ref_tx)}"
@@ -578,11 +580,3 @@ body {{
         )
 
 
-def _esc(text: str) -> str:
-    """Escapa caracteres HTML especiais."""
-    return (
-        text.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace('"', "&quot;")
-    )

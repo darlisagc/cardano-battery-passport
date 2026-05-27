@@ -99,13 +99,13 @@ class TestReferenceParsing:
             "uverify_template_id": "digitalProductPassport",
             "name": "P",
             "issuer": "I",
-            "cert_origem_credential_tx": "tx_hash_abc",
-            "cert_celula_credential_tx": "tx_hash_def",
+            "ref_origem_tx": "tx_hash_abc",
+            "ref_celula_tx": "tx_hash_def",
         }
         cred = parser.extrair_credencial([_make_entry(1990, payload)])
         assert cred.referencias == {
-            "origem_credential_tx": "tx_hash_abc",
-            "celula_credential_tx": "tx_hash_def",
+            "origem_tx": "tx_hash_abc",
+            "celula_tx": "tx_hash_def",
         }
 
     def test_extracts_data_hash_refs(self, parser):
@@ -113,8 +113,8 @@ class TestReferenceParsing:
             "uverify_template_id": "digitalProductPassport",
             "name": "P",
             "issuer": "I",
-            "cert_origem_data_hash": "hash_abc",
-            "cert_celula_data_hash": "hash_def",
+            "ref_origem_data_hash": "hash_abc",
+            "ref_celula_data_hash": "hash_def",
         }
         cred = parser.extrair_credencial([_make_entry(1990, payload)])
         assert cred.data_hashes == {
@@ -123,8 +123,8 @@ class TestReferenceParsing:
         }
 
     def test_cert_labels_not_treated_as_refs(self, parser):
-        """cert_* fields without _credential_tx or _data_hash suffix
-        should NOT be in referencias or data_hashes."""
+        """cert_* fields (actual certifications) should NOT be in
+        referencias or data_hashes — only ref_* fields are references."""
         payload = {
             "uverify_template_id": "digitalProductPassport",
             "name": "P",
@@ -213,7 +213,7 @@ class TestParseRealPayloads:
         cred = parser.extrair_credencial([entry])
 
         assert cred.nome == "Celulas NMC 811 - Lote BA-2026-04-008"
-        assert "origem_credential_tx" in cred.referencias
+        assert "origem_tx" in cred.referencias
         assert "origem_data_hash" in cred.data_hashes
 
     def test_parse_payload_pack(self, parser):
@@ -225,7 +225,7 @@ class TestParseRealPayloads:
         cred = parser.extrair_credencial([entry])
 
         assert cred.nome == "Pack EV 75kWh - SP-2026-04-155"
-        assert "celula_credential_tx" in cred.referencias
+        assert "celula_tx" in cred.referencias
         assert "celula_data_hash" in cred.data_hashes
 
     def test_parse_payload_reciclagem(self, parser):

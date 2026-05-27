@@ -49,8 +49,8 @@ class TestCredencialDPP:
         assert c.materiais == {"litio": "98%"}
 
     def test_referencias_is_dict(self):
-        c = _make_cred(referencias={"origem_credential_tx": "hash123"})
-        assert c.referencias["origem_credential_tx"] == "hash123"
+        c = _make_cred(referencias={"origem_tx": "hash123"})
+        assert c.referencias["origem_tx"] == "hash123"
 
     def test_data_hashes_is_dict(self):
         c = _make_cred(data_hashes={"origem_data_hash": "dh123"})
@@ -66,12 +66,22 @@ class TestPassaporteBateria:
         assert pb.origem.nome == "Origem"
         assert pb.celula.nome == "Celula"
         assert pb.pack.nome == "Pack"
+        assert pb.reciclagem is None
+
+    def test_creation_with_reciclagem(self):
+        o = _make_cred(nome="Origem")
+        c = _make_cred(nome="Celula")
+        p = _make_cred(nome="Pack")
+        r = _make_cred(nome="Reciclagem")
+        pb = PassaporteBateria(origem=o, celula=c, pack=p, reciclagem=r)
+        assert pb.reciclagem.nome == "Reciclagem"
 
     def test_creation_with_none_fields(self):
         pb = PassaporteBateria(origem=None, celula=None, pack=None)
         assert pb.origem is None
         assert pb.celula is None
         assert pb.pack is None
+        assert pb.reciclagem is None
 
     def test_frozen(self):
         pb = PassaporteBateria(origem=None, celula=None, pack=None)

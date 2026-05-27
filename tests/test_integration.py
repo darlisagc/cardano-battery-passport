@@ -70,8 +70,8 @@ class TestFullPipeline:
         cred_pack = _parse(parser, pack_payload)
 
         # Pack should reference celula
-        assert "celula_credential_tx" in cred_pack.referencias
-        assert cred_pack.referencias["celula_credential_tx"] == FAKE_ENV["ATOR2_TX"]
+        assert "celula_tx" in cred_pack.referencias
+        assert cred_pack.referencias["celula_tx"] == FAKE_ENV["ATOR2_TX"]
 
         # Pack should have celula data_hash
         assert "celula_data_hash" in cred_pack.data_hashes
@@ -83,8 +83,8 @@ class TestFullPipeline:
         cred_cel = _parse(parser, cel_payload)
 
         # Celula should reference origem
-        assert "origem_credential_tx" in cred_cel.referencias
-        assert cred_cel.referencias["origem_credential_tx"] == FAKE_ENV["ATOR1_TX"]
+        assert "origem_tx" in cred_cel.referencias
+        assert cred_cel.referencias["origem_tx"] == FAKE_ENV["ATOR1_TX"]
 
         # Parse origem
         orig_payload, _, _ = all_payloads["origem"]
@@ -99,11 +99,44 @@ class TestFullPipeline:
         cred_rec = _parse(parser, rec_payload)
 
         assert len(cred_rec.referencias) == 3
-        assert cred_rec.referencias["pack_credential_tx"] == FAKE_ENV["ATOR3_TX"]
-        assert cred_rec.referencias["celula_credential_tx"] == FAKE_ENV["ATOR2_TX"]
-        assert cred_rec.referencias["origem_credential_tx"] == FAKE_ENV["ATOR1_TX"]
+        assert cred_rec.referencias["pack_tx"] == FAKE_ENV["ATOR3_TX"]
+        assert cred_rec.referencias["celula_tx"] == FAKE_ENV["ATOR2_TX"]
+        assert cred_rec.referencias["origem_tx"] == FAKE_ENV["ATOR1_TX"]
 
         assert len(cred_rec.data_hashes) == 3
+
+    def test_reciclagem_chain_walk(self, parser, all_payloads):
+        """Simulate the verifier auto-detecting reciclagem entry point
+        and walking: reciclagem → pack → celula → origem."""
+        rec_payload, _, _ = all_payloads["reciclagem"]
+        cred_rec = _parse(parser, rec_payload)
+
+        # Reciclagem should have ref_pack_tx — triggers auto-detect
+        assert "pack_tx" in cred_rec.referencias
+        assert cred_rec.referencias["pack_tx"] == FAKE_ENV["ATOR3_TX"]
+
+        # Follow to pack
+        pack_payload, _, _ = all_payloads["pack"]
+        cred_pack = _parse(parser, pack_payload)
+        assert "celula_tx" in cred_pack.referencias
+
+        # Follow to celula
+        cel_payload, _, _ = all_payloads["celula"]
+        cred_cel = _parse(parser, cel_payload)
+        assert "origem_tx" in cred_cel.referencias
+
+        # Follow to origem
+        orig_payload, _, _ = all_payloads["origem"]
+        cred_orig = _parse(parser, orig_payload)
+        assert cred_orig.referencias == {}
+
+        # Build full passaporte with reciclagem
+        passaporte = PassaporteBateria(
+            origem=cred_orig, celula=cred_cel, pack=cred_pack,
+            reciclagem=cred_rec,
+        )
+        assert passaporte.reciclagem is not None
+        assert passaporte.reciclagem.nome is not None
 
     def test_full_report_generation(self, parser, all_payloads):
         """Generate a complete report from the parsed chain."""
@@ -154,13 +187,13 @@ class TestDataHashConsistency:
         _, serial_o, gtin_o = payload_origem()
         payload_c, _, _ = payload_celula(FAKE_ENV)
         expected = sha256((gtin_o + serial_o).encode("utf-8")).hexdigest()
-        assert payload_c["cert_origem_data_hash"] == expected
+        assert payload_c["ref_origem_data_hash"] == expected
 
     def test_pack_points_to_real_celula(self):
         _, serial_c, gtin_c = payload_celula(FAKE_ENV)
         payload_p, _, _ = payload_pack(FAKE_ENV)
         expected = sha256((gtin_c + serial_c).encode("utf-8")).hexdigest()
-        assert payload_p["cert_celula_data_hash"] == expected
+        assert payload_p["ref_celula_data_hash"] == expected
 
     def test_reciclagem_points_to_all_real_actors(self):
         _, serial_o, gtin_o = payload_origem()
@@ -168,12 +201,12 @@ class TestDataHashConsistency:
         _, serial_p, gtin_p = payload_pack(FAKE_ENV)
         payload_r, _, _ = payload_reciclagem(FAKE_ENV)
 
-        assert payload_r["cert_origem_data_hash"] == sha256(
+        assert payload_r["ref_origem_data_hash"] == sha256(
             (gtin_o + serial_o).encode("utf-8")
         ).hexdigest()
-        assert payload_r["cert_celula_data_hash"] == sha256(
+        assert payload_r["ref_celula_data_hash"] == sha256(
             (gtin_c + serial_c).encode("utf-8")
         ).hexdigest()
-        assert payload_r["cert_pack_data_hash"] == sha256(
+        assert payload_r["ref_pack_data_hash"] == sha256(
             (gtin_p + serial_p).encode("utf-8")
         ).hexdigest()

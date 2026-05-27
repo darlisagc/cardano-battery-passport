@@ -83,7 +83,7 @@ class TestRelatorioReciclagemCexplorerLinks:
     def test_no_card_link_without_tx_hash(self):
         rel = RelatorioReciclagemHTML()
         output = rel.gerar(_make_cred(
-            referencias={"pack_credential_tx": "abc123"},
+            referencias={"pack_tx": "abc123"},
         ))
         assert '<div class="card-tx">' not in output
 
@@ -97,7 +97,7 @@ class TestRelatorioReciclagemCexplorerLinks:
         rel = RelatorioReciclagemHTML()
         ref_tx = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
         output = rel.gerar(_make_cred(
-            referencias={"pack_credential_tx": ref_tx},
+            referencias={"pack_tx": ref_tx},
         ))
         assert f"https://preprod.cexplorer.io/tx/{ref_tx}" in output
         assert "<a href=" in output
@@ -105,9 +105,9 @@ class TestRelatorioReciclagemCexplorerLinks:
     def test_ref_badges_link_all_references(self):
         rel = RelatorioReciclagemHTML()
         refs = {
-            "pack_credential_tx": "aa" * 32,
-            "celula_credential_tx": "bb" * 32,
-            "origem_credential_tx": "cc" * 32,
+            "pack_tx": "aa" * 32,
+            "celula_tx": "bb" * 32,
+            "origem_tx": "cc" * 32,
         }
         output = rel.gerar(_make_cred(referencias=refs))
         assert f"cexplorer.io/tx/{'aa' * 32}" in output

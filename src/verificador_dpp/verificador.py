@@ -48,7 +48,7 @@ Para cada certificado na cadeia, ele tenta dois caminhos:
     num arquivo separado (servidor UVerify).
     O verificador tenta descobrir esse data_hash de tres formas:
       a) Hint da credencial anterior na cadeia (campo
-         cert_*_data_hash no payload) — atalho direto.
+         ref_*_data_hash no payload) — atalho direto.
       b) Redeemer on-chain — dado que acompanha operacoes no smart
          contract Plutus do UVerify. Contem o hash real do certificado.
          Analogia: como um "recibo" que o cartorio emite ao registrar.
@@ -60,7 +60,7 @@ Para cada certificado na cadeia, ele tenta dois caminhos:
     (GET /api/v1/verify/{data_hash}) para obter o payload completo.
 
   Depois de encontrar um certificado, o verificador le as referencias
-  para o proximo certificado na cadeia (campos cert_*_credential_tx)
+  para o proximo certificado na cadeia (campos ref_*_tx)
   e repete o processo ate chegar na origem.
 
 RESULTADO
@@ -99,7 +99,7 @@ from dotenv import load_dotenv
 from uverify_sdk import UVerifyApiError, UVerifyClient
 
 from .modelos import CredencialDPP, PassaporteBateria
-from .parser_credencial import ParserCredencial
+from .parser_credencial import ParserCredencial, classificar_campos
 from .relatorio_html import RelatorioHTML
 from .relatorio_passaporte import RelatorioPassaporte
 
@@ -332,12 +332,12 @@ def _credencial_from_uverify_response(
     (via uverify.verify_by_transaction). Extrai o campo `metadata`
     da resposta e classifica cada chave do payload:
 
-      - cert_*_credential_tx → vai para `referencias` (links para
-        outras credenciais na cadeia)
-      - cert_*_data_hash     → vai para `data_hashes` (hints para
-        lookup UVerify das credenciais referenciadas)
-      - mat_*                → vai para `materiais` (composicao)
-      - demais campos        → mapeados diretamente (name, gtin, etc)
+      - ref_*_tx       → vai para `referencias` (links para outras
+        credenciais na cadeia)
+      - ref_*_data_hash → vai para `data_hashes` (hints para lookup
+        UVerify das credenciais referenciadas)
+      - mat_*           → vai para `materiais` (composicao)
+      - demais campos   → mapeados diretamente (name, gtin, etc)
     """
     raw_meta = getattr(cert, "metadata", None)
     if raw_meta is None:
@@ -345,19 +345,7 @@ def _credencial_from_uverify_response(
     meta = _normalize_metadata(raw_meta) or {}
 
     # Classificar cada campo do payload pela sua convencao de nome.
-    referencias: dict[str, str] = {}
-    materiais: dict[str, str] = {}
-    data_hashes: dict[str, str] = {}
-    for k, v in meta.items():
-        if k.startswith("cert_") and k.endswith("_credential_tx"):
-            # Ex: "cert_origem_credential_tx" → chave "origem_credential_tx"
-            referencias[k[len("cert_"):]] = str(v)
-        elif k.startswith("cert_") and k.endswith("_data_hash"):
-            # Ex: "cert_origem_data_hash" → chave "origem_data_hash"
-            data_hashes[k[len("cert_"):]] = str(v)
-        elif k.startswith("mat_"):
-            # Ex: "mat_niquel" → chave "niquel"
-            materiais[k[len("mat_"):]] = str(v)
+    referencias, data_hashes, materiais = classificar_campos(meta)
 
     return CredencialDPP(
         nome=meta.get("name"),
@@ -388,8 +376,9 @@ def _credencial_from_uverify_response(
 # precisar parsear o JSON inteiro.
 # =====================================================================
 
-# URL base da API UVerify para a rede preprod (testnet).
-_UVERIFY_BASE = "https://api.preprod.uverify.io"
+# URL base da API UVerify — le do .env (mesma var usada pelo emissor_sdk),
+# com fallback para a URL default da rede preprod (testnet).
+_UVERIFY_BASE = os.environ.get("UVERIFY_API_URL", "").strip() or "https://api.preprod.uverify.io"
 
 
 def _verify_by_transaction_direct(
@@ -466,16 +455,7 @@ def _verify_by_transaction_direct(
 
     # Passo 5 — Classificar os campos da metadata (mesma logica de
     # _credencial_from_uverify_response, mas aqui com meta ja parseada).
-    referencias: dict[str, str] = {}
-    materiais: dict[str, str] = {}
-    data_hashes: dict[str, str] = {}
-    for k, v in meta.items():
-        if k.startswith("cert_") and k.endswith("_credential_tx"):
-            referencias[k[len("cert_"):]] = str(v)
-        elif k.startswith("cert_") and k.endswith("_data_hash"):
-            data_hashes[k[len("cert_"):]] = str(v)
-        elif k.startswith("mat_"):
-            materiais[k[len("mat_"):]] = str(v)
+    referencias, data_hashes, materiais = classificar_campos(meta)
 
     return CredencialDPP(
         nome=meta.get("name"),
@@ -525,7 +505,7 @@ def buscar_credencial(
         (campo `uverify_template_id`), consulta a API do UVerify usando
         candidatos a `data_hash`. Os candidatos vem de tres fontes:
           1. Hint fornecido pelo chamador (ex: DATA_HASH_PACK do .env
-             ou cert_*_data_hash da credencial anterior na cadeia)
+             ou ref_*_data_hash da credencial anterior na cadeia)
           2. Redeemer on-chain (hash real do certificado UVerify)
           3. Inline datum (sequencias de 32 bytes — heuristico)
 
@@ -576,7 +556,7 @@ def buscar_credencial(
     # ----------------------------------------------------------------
     candidatos: list[str] = []
 
-    # Fonte 1: hint fornecido pelo chamador (ex: cert_celula_data_hash
+    # Fonte 1: hint fornecido pelo chamador (ex: ref_celula_data_hash
     # extraido da credencial do pack).
     if data_hash_hint:
         candidatos.append(data_hash_hint)
@@ -614,16 +594,25 @@ def buscar_credencial(
 # =====================================================================
 # SECAO 5 — Ponto de entrada (CLI)
 #
-# Fluxo do verificador em 4 passos:
-#   1. Buscar a credencial do PACK (Ator 3) — ponto de entrada.
+# O verificador auto-detecta o ponto de entrada da cadeia:
+#   - Se a credencial de entrada contem `ref_pack_tx`, e uma
+#     credencial de reciclagem (Ator 4). O verificador armazena-a e
+#     segue ref_pack_tx para obter o pack, depois caminha para tras.
+#   - Caso contrario, e o pack (Ator 3) e o verificador caminha
+#     diretamente: pack → celula → origem.
+#
+# Fluxo com reciclagem (5 passos):
+#   1. Buscar a credencial de entrada.
+#   2. Detectar reciclagem → seguir ref_pack_tx para o pack.
+#   3. Seguir a referencia para a CELULA (Ator 2).
+#   4. Seguir a referencia para a ORIGEM do litio (Ator 1).
+#   5. Montar o relatorio consolidado.
+#
+# Fluxo sem reciclagem (4 passos):
+#   1. Buscar a credencial do PACK (Ator 3).
 #   2. Seguir a referencia para a CELULA (Ator 2).
 #   3. Seguir a referencia para a ORIGEM do litio (Ator 1).
-#   4. Montar o relatorio consolidado (passaporte da bateria).
-#
-# A cadeia e percorrida de tras para frente: comeca pelo pack
-# (produto final) e vai ate a origem da materia-prima (litio).
-# Isso simula o cenario real: um regulador europeu escaneia o QR
-# do pack e quer rastrear toda a cadeia de suprimentos.
+#   4. Montar o relatorio consolidado.
 # =====================================================================
 
 
@@ -670,32 +659,53 @@ def main() -> None:
 
     try:
         # ============================================================
-        # PASSO 1/4 — Buscar a credencial do PACK (Ator 3).
+        # PASSO 1 — Buscar a credencial de entrada.
         #
-        # O pack e o ponto de entrada da verificacao. O .env fornece
-        # o tx_hash (TX_HASH_PACK) e opcionalmente o data_hash
-        # (DATA_HASH_PACK) como hint para o lookup UVerify.
-        # Se o pack foi emitido via emissor_direto (opcao A), o hint
-        # e ignorado e a metadata nativa resolve diretamente.
+        # O .env fornece o tx_hash (TX_HASH_PACK) e opcionalmente o
+        # data_hash (DATA_HASH_PACK) como hint para o lookup UVerify.
         # ============================================================
-        print("[1/4] Buscando credencial do pack...")
-        cred_pack = buscar_credencial(
+        total_steps = 4  # default sem reciclagem
+        print("[1/?] Buscando credencial de entrada...")
+        cred_entry = buscar_credencial(
             blockfrost, uverify, parser, tx_hash_pack,
             data_hash_pack or None,
         )
-        print(f"      OK - {cred_pack.nome}")
+        print(f"      OK - {cred_entry.nome}")
         print()
 
         # ============================================================
-        # PASSO 2/4 — Seguir a referencia para a CELULA (Ator 2).
-        #
-        # A credencial do pack contem um campo
-        # `cert_celula_credential_tx` que aponta para a tx da celula.
-        # Tambem contem `cert_celula_data_hash` como hint para o
-        # lookup UVerify (necessario se a celula foi emitida via B/C).
+        # Auto-detect: se a credencial de entrada contem ref_pack_tx,
+        # ela e uma credencial de reciclagem (Ator 4). Nesse caso,
+        # seguimos ref_pack_tx para chegar no pack e continuamos.
         # ============================================================
-        print("[2/4] Seguindo referencias para as celulas...")
-        tx_celula = cred_pack.referencias.get("celula_credential_tx")
+        cred_reciclagem = None
+        if cred_entry.referencias.get("pack_tx"):
+            total_steps = 5
+            cred_reciclagem = cred_entry
+            print(f"[2/{total_steps}] Detectada reciclagem — seguindo para o pack...")
+            tx_pack = cred_reciclagem.referencias["pack_tx"]
+            dh_pack = cred_reciclagem.data_hashes.get("pack_data_hash")
+            cred_pack = buscar_credencial(
+                blockfrost, uverify, parser, tx_pack, dh_pack,
+            )
+            print(f"      OK - {cred_pack.nome}")
+            print()
+            step_offset = 1  # steps shift by 1 due to reciclagem
+        else:
+            cred_pack = cred_entry
+            step_offset = 0
+
+        # ============================================================
+        # Seguir a referencia para a CELULA (Ator 2).
+        #
+        # A credencial do pack contem um campo `ref_celula_tx` que
+        # aponta para a tx da celula. Tambem contem
+        # `ref_celula_data_hash` como hint para o lookup UVerify
+        # (necessario se a celula foi emitida via B/C).
+        # ============================================================
+        step = 2 + step_offset
+        print(f"[{step}/{total_steps}] Seguindo referencias para as celulas...")
+        tx_celula = cred_pack.referencias.get("celula_tx")
         dh_celula = cred_pack.data_hashes.get("celula_data_hash")
         cred_celula = None
         if tx_celula:
@@ -709,16 +719,17 @@ def main() -> None:
         print()
 
         # ============================================================
-        # PASSO 3/4 — Seguir a referencia para a ORIGEM (Ator 1).
+        # Seguir a referencia para a ORIGEM (Ator 1).
         #
-        # A credencial da celula contem `cert_origem_credential_tx`
-        # e `cert_origem_data_hash` que apontam para a tx da origem
+        # A credencial da celula contem `ref_origem_tx` e
+        # `ref_origem_data_hash` que apontam para a tx da origem
         # do litio (materia-prima).
         # ============================================================
-        print("[3/4] Seguindo referencias para a origem do litio...")
+        step = 3 + step_offset
+        print(f"[{step}/{total_steps}] Seguindo referencias para a origem do litio...")
         cred_origem = None
         if cred_celula is not None:
-            tx_origem = cred_celula.referencias.get("origem_credential_tx")
+            tx_origem = cred_celula.referencias.get("origem_tx")
             dh_origem = cred_celula.data_hashes.get("origem_data_hash")
             if tx_origem:
                 cred_origem = buscar_credencial(
@@ -733,14 +744,17 @@ def main() -> None:
         print()
 
         # ============================================================
-        # PASSO 4/4 — Montar e imprimir o relatorio consolidado.
+        # Montar e imprimir o relatorio consolidado.
         #
-        # Com as tres credenciais (origem, celula, pack), monta o
-        # PassaporteBateria e gera o relatorio em portugues.
+        # Com as credenciais da cadeia, monta o PassaporteBateria
+        # e gera o relatorio em portugues.
         # ============================================================
-        print("[4/4] Montando relatorio do passaporte...")
+        step = 4 + step_offset
+        print(f"[{step}/{total_steps}] Montando relatorio do passaporte...")
         print()
-        passaporte = PassaporteBateria(cred_origem, cred_celula, cred_pack)
+        passaporte = PassaporteBateria(
+            cred_origem, cred_celula, cred_pack, cred_reciclagem,
+        )
         print(relatorio.gerar(passaporte))
 
         # Gera relatorio HTML e abre no navegador.

@@ -24,6 +24,30 @@ from .modelos import CredencialDPP
 TEMPLATE_DPP = "digitalProductPassport"
 
 
+def classificar_campos(meta: dict) -> tuple[dict, dict, dict]:
+    """Classifica campos de metadata por prefixo.
+
+    Convencao UVerify:
+      - ref_*_tx       → referencias (links/"ponteiros" para outras txs)
+      - ref_*_data_hash → data_hashes (impressoes digitais para lookup UVerify)
+      - mat_*           → materiais (composicao do produto)
+
+    Returns:
+        Tupla (referencias, data_hashes, materiais).
+    """
+    referencias: dict[str, str] = {}
+    data_hashes: dict[str, str] = {}
+    materiais: dict[str, str] = {}
+    for k, v in meta.items():
+        if k.startswith("ref_") and k.endswith("_tx"):
+            referencias[k[len("ref_"):]] = str(v)
+        elif k.startswith("ref_") and k.endswith("_data_hash"):
+            data_hashes[k[len("ref_"):]] = str(v)
+        elif k.startswith("mat_"):
+            materiais[k[len("mat_"):]] = str(v)
+    return referencias, data_hashes, materiais
+
+
 class ParserCredencial:
     """Converte metadados brutos do Blockfrost em objetos CredencialDPP.
 
@@ -148,10 +172,10 @@ class ParserCredencial:
         """Converte um dict de metadata UVerify para CredencialDPP.
 
         Classifica os campos do payload pela convencao de nomes:
-          - cert_*_credential_tx → referencias (links/"ponteiros" para outras txs)
-          - cert_*_data_hash     → data_hashes (impressoes digitais para lookup UVerify)
-          - mat_*                → materiais (composicao do produto)
-          - campos padrao        → mapeados diretamente (name, gtin, etc)
+          - ref_*_tx       → referencias (links/"ponteiros" para outras txs)
+          - ref_*_data_hash → data_hashes (impressoes digitais para lookup UVerify)
+          - mat_*           → materiais (composicao do produto)
+          - campos padrao   → mapeados diretamente (name, gtin, etc)
 
         Levanta:
             ValueError: se o template nao for `digitalProductPassport`.
@@ -165,21 +189,7 @@ class ParserCredencial:
             )
 
         # Classificar cada campo pelo prefixo do nome.
-        referencias: dict[str, str] = {}
-        materiais: dict[str, str] = {}
-        data_hashes: dict[str, str] = {}
-
-        for chave, valor in n.items():
-            if chave.startswith("cert_") and chave.endswith("_credential_tx"):
-                # Ex: "cert_origem_credential_tx" → "origem_credential_tx"
-                # Remove o prefixo "cert_" para simplificar o acesso.
-                referencias[chave[len("cert_"):]] = str(valor)
-            elif chave.startswith("cert_") and chave.endswith("_data_hash"):
-                # Ex: "cert_origem_data_hash" → "origem_data_hash"
-                data_hashes[chave[len("cert_"):]] = str(valor)
-            elif chave.startswith("mat_"):
-                # Ex: "mat_niquel" → "niquel"
-                materiais[chave[len("mat_"):]] = str(valor)
+        referencias, data_hashes, materiais = classificar_campos(n)
 
         return CredencialDPP(
             nome=self._texto(n, "name"),

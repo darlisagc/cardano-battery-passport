@@ -1,8 +1,8 @@
 """Relatorio textual do PassaporteBateria (Digital Product Passport).
 
-Recebe um objeto PassaporteBateria — que agrupa as tres CredencialDPP
-da cadeia de suprimentos (origem, celula, pack) — e gera um relatorio
-formatado em portugues para exibicao no terminal.
+Recebe um objeto PassaporteBateria — que agrupa as CredencialDPP da
+cadeia de suprimentos (origem, celula, pack, e opcionalmente reciclagem)
+— e gera um relatorio formatado em portugues para exibicao no terminal.
 
 Analogia: o PassaporteBateria e como um "dossie completo" do produto
 que junta todos os certificados verificados on-chain. Este modulo
@@ -30,13 +30,14 @@ class RelatorioPassaporte:
     def gerar(self, passaporte: PassaporteBateria) -> str:
         """Gera o relatorio textual completo do passaporte.
 
-        O relatorio tem tres secoes (uma por ator da cadeia):
+        O relatorio tem secoes para cada ator da cadeia:
           1. Origem (litio) — materia-prima
           2. Fabricacao das celulas — componente intermediario
           3. Montagem do pack — produto final
+          4. Reciclagem (opcional) — fim de vida
 
         Parametros:
-            passaporte: objeto PassaporteBateria com as tres credenciais.
+            passaporte: objeto PassaporteBateria com as credenciais.
 
         Retorna:
             String formatada pronta para imprimir no terminal.
@@ -53,6 +54,8 @@ class RelatorioPassaporte:
         self._secao(linhas, "Origem (lítio)", passaporte.origem)
         self._secao(linhas, "Fabricação das células", passaporte.celula)
         self._secao(linhas, "Montagem do pack", passaporte.pack)
+        if passaporte.reciclagem is not None:
+            self._secao(linhas, "Reciclagem", passaporte.reciclagem)
 
         # Rodape confirmando a verificacao.
         linhas.append("")

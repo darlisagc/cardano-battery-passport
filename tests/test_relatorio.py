@@ -60,6 +60,20 @@ class TestRelatorioPassaporte:
         output = rel.gerar(pb)
         assert "credencial ausente" in output
 
+    def test_report_reciclagem_section(self):
+        rel = RelatorioPassaporte()
+        r = _make_cred(nome="Reciclagem Pack")
+        pb = PassaporteBateria(origem=None, celula=None, pack=None, reciclagem=r)
+        output = rel.gerar(pb)
+        assert "Reciclagem" in output
+        assert "Reciclagem Pack" in output
+
+    def test_report_no_reciclagem_when_none(self):
+        rel = RelatorioPassaporte()
+        pb = PassaporteBateria(origem=None, celula=None, pack=None)
+        output = rel.gerar(pb)
+        assert "Reciclagem" not in output
+
     def test_report_footer(self):
         rel = RelatorioPassaporte()
         pb = PassaporteBateria(origem=None, celula=None, pack=None)
