@@ -120,7 +120,7 @@ cardano-battery-passport/
     ├── verificador.py                      # Le e percorre a cadeia de credenciais (cobre A+B+C)
     ├── parser_credencial.py                # Converte metadata do Blockfrost em objetos CredencialDPP
     ├── modelos.py                          # Data classes: CredencialDPP, PassaporteBateria
-    ├── relatorio_passaporte.py             # Relatorio texto (saida pt-BR no terminal)
+    ├── relatorio_passaporte.py             # Relatorio texto no terminal
     ├── relatorio_html.py                   # Relatorio HTML — passaporte completo da cadeia
     ├── relatorio_emissao_html.py           # Recibo HTML gerado apos cada emissao
     └── relatorio_reciclagem_html.py        # Relatorio HTML de reciclagem (Ator 4)
