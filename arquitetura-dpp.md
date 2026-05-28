@@ -584,8 +584,7 @@ via APIs.**
 | Termo | Explicacao |
 |-------|-----------|
 | **Blockchain** | Banco de dados distribuido e imutavel — como um cartorio digital publico onde ninguem pode alterar os registros depois de gravados. |
-| **Transacao (tx)** | Um registro gravado na blockchain. Recebe um identificador unico (TX hash) que funciona como numero de protocolo. |
-| **TX hash** | Identificador unico de uma transacao na blockchain — equivalente ao numero de protocolo de um documento no cartorio. |
+| **Transacao (tx)** | Um registro gravado na blockchain. Cada transacao recebe um identificador unico chamado TX hash — equivalente ao numero de protocolo de um documento no cartorio. |
 | **Metadata** | Dados adicionais anexados a uma transacao. Na Cardano, sao organizados por "labels" (numeros). Nosso sistema usa o label 1990. |
 | **Smart contract** | Programa que roda na blockchain e valida dados automaticamente antes de permitir o registro. Como um funcionario-robo que confere formularios. |
 | **Redeemer** | Estrutura de dados enviada junto com uma transacao para interagir com um smart contract. No nosso sistema, contem o data_hash do certificado. Pense nele como o "argumento" que voce passa ao funcionario-robo. |
