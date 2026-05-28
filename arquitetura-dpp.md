@@ -270,23 +270,9 @@ caminhos**, como um menu de restaurante com prato principal e alternativa:
 
 2. **Caminho 2 — "Ir ao cofre" (UVerify API):** Se o Caminho 1 nao encontrou
    dados, significa que a credencial foi emitida pelas Opcoes B/C. Nesse caso,
-   o verificador precisa extrair o data_hash (impressao digital) da transacao e
-   usá-lo para consultar o servidor UVerify, onde o payload completo esta
-   armazenado.
-
-### Termos tecnicos usados no diagrama abaixo
-
-Antes de ler o diagrama de sequencia, duas definicoes rapidas:
-
-- **Redeemer:** No contexto deste sistema, e uma estrutura de dados incluida na
-  transacao que contem o data_hash do certificado. Pense nele como um "indice"
-  que o smart contract usa para localizar o certificado. E a fonte mais confiavel
-  para extrair o data_hash.
-
-- **Inline datum:** Outra estrutura de dados na transacao, usada internamente
-  pelo smart contract para manter o estado. Contem sequencias de 32 bytes que
-  **podem** ser data_hashes, mas nao e garantido — por isso e um fallback
-  heuristico (o verificador tenta, mas confirma antes de usar).
+   o verificador precisa descobrir o `data_hash` (a "chave do cofre") gravado
+   na transacao — tentando hint, redeemer ou inline datum, nessa ordem — e
+   consultar a API do UVerify para obter o payload completo.
 
 ```mermaid
 sequenceDiagram
@@ -371,23 +357,24 @@ Este caminho funciona para credenciais emitidas pela Opcao A, onde o payload
 inteiro esta dentro da transacao.
 
 **Caminho 2 — "Ir ao cofre" (UVerify API):**
-Se o Caminho 1 nao encontrou dados, o verificador precisa descobrir o data_hash
-(a "chave do cofre") para buscar o payload no servidor UVerify. Ele reune
-candidatos de **3 fontes**, da mais confiavel para a menos confiavel:
+Se o Caminho 1 nao encontrou dados, o verificador precisa descobrir o `data_hash`
+(a "chave do cofre") para buscar o payload no servidor UVerify. Ele tenta **3
+fontes**, em ordem de confiabilidade:
 
 1. **(a) Hint** — A credencial anterior na cadeia ja pode ter fornecido o
-   data_hash como referencia (campo `ref_*_data_hash`). E o atalho mais
+   `data_hash` como referencia (campo `ref_*_data_hash`). E o atalho mais
    direto: "a empresa anterior ja me disse qual e a chave do cofre."
 
-2. **(b) Redeemer on-chain** — A funcao `_extrair_hashes_do_redeemer()` le a
-   estrutura de dados do redeemer na transacao. Dentro dela, o data_hash real
-   do certificado esta armazenado em uma posicao conhecida. E a fonte mais
-   confiavel quando o hint nao esta disponivel.
+2. **(b) Redeemer on-chain** — O redeemer e a estrutura que o smart contract
+   recebe para validar a transacao. O `data_hash` do certificado esta gravado
+   dentro dele, em uma posicao conhecida. E a fonte mais confiavel depois do
+   hint porque o proprio contrato garante o formato.
 
-3. **(c) Inline datum** — A funcao `_walk_for_32byte()` varre os dados binarios
-   (CBOR) do inline datum procurando sequencias de 32 bytes que possam ser
-   data_hashes. E um fallback heuristico — pode encontrar falsos positivos,
-   por isso o verificador sempre confirma com a API UVerify antes de aceitar.
+3. **(c) Inline datum** — Se nem hint nem redeemer estao disponiveis, o
+   verificador varre o datum da transacao procurando sequencias de 32 bytes
+   que correspondam ao tamanho de um hash SHA-256. E uma busca por tentativa,
+   nao uma leitura direta — pode encontrar falsos positivos, por isso o
+   verificador sempre confirma com a API UVerify antes de aceitar.
 
 Para cada candidato, o verificador chama `_verify_by_transaction_direct()`, que
 faz `GET /api/v1/verify/{data_hash}` diretamente na API publica do UVerify.
