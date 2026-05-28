@@ -295,9 +295,11 @@ sequenceDiagram
     participant UV as UVerify API
     participant R as Relatorio
 
+    Note over V: Le TX_HASH_PACK do .env ou argumento da linha de comando
+
     rect rgb(255, 243, 205)
     Note over V,BF: Passo 1 — Buscar credencial do Pack
-    V->>BF: Busca metadata da tx do Pack
+    V->>BF: Busca metadata da tx do Pack (TX_HASH_PACK)
     alt Opcao A — payload gravado direto na transacao
         BF-->>V: Metadata nativa (label 1990) com todos os campos
         Note over V: Encontra uverify_template_id no label 1990
