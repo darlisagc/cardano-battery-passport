@@ -693,7 +693,7 @@ DATA_HASH_PACK=<data_hash do pack>     # necessário se o pack foi emitido via U
 
 1. **Hint da cadeia** — campo `ref_*_data_hash` propagado pela credencial que referencia esta tx. Analogia: cada certificado já carrega a "impressão digital" do produto que referencia, como um "atalho" para o próximo.
 2. **Redeemer on-chain** — o verificador lê o redeemer da transação via Blockfrost e extrai o hash do `UVerifyCertificate` (caminho: `redeemer.fields[1].list[*].fields[0].bytes`). Analogia: é como ler o "comprovante" que foi apresentado ao smart contract — contém o hash real do certificado.
-3. **Inline datum** — fallback heurístico: extrai todas as sequências de 32 bytes do inline datum. Analogia: como vasculhar a "ficha de cadastro" do smart contract procurando qualquer código que possa ser o hash do produto — menos confiável porque o datum contém outros hashes.
+3. **Inline datum** — alternativa por tentativa: varre o datum da transação procurando sequências de 32 bytes que correspondam ao tamanho de um hash SHA-256. Não é uma leitura direta — pode encontrar falsos positivos, por isso o verificador sempre confirma com a API UVerify antes de aceitar.
 
 Para cada candidato, o verificador faz um **HTTP GET direto** na API pública do UVerify (`/api/v1/verify/{data_hash}`) em vez de usar o SDK Python — isso evita um `RecursionError` causado pela resposta JSON profundamente aninhada (o campo `stateDatum` pode ter centenas de níveis de histórico).
 
