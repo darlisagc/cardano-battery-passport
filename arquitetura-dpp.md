@@ -274,7 +274,7 @@ sequenceDiagram
         BF-->>V: Sem metadata nativa na transacao
         V->>BF: Le o redeemer da transacao (estrutura do smart contract)
         BF-->>V: Extrai o data_hash (impressao digital do certificado)
-        V->>UV: GET /verify/{data_hash}
+        V->>UV: GET /api/v1/verify/{data_hash}
         UV-->>V: JSON com todos os campos do certificado
         Note over V: Extrai nome, GTIN, origem, materiais, referencias
     end
@@ -292,7 +292,7 @@ sequenceDiagram
         BF-->>V: Sem metadata nativa na transacao
         V->>BF: Le o redeemer da transacao
         BF-->>V: Extrai o data_hash
-        V->>UV: GET /verify/{data_hash}
+        V->>UV: GET /api/v1/verify/{data_hash}
         UV-->>V: JSON com todos os campos do certificado
         Note over V: Extrai nome, GTIN, origem, materiais, referencias
     end
@@ -310,7 +310,7 @@ sequenceDiagram
         BF-->>V: Sem metadata nativa na transacao
         V->>BF: Le o redeemer da transacao
         BF-->>V: Extrai o data_hash
-        V->>UV: GET /verify/{data_hash}
+        V->>UV: GET /api/v1/verify/{data_hash}
         UV-->>V: JSON com todos os campos do certificado
         Note over V: Extrai nome, GTIN, origem, materiais, referencias
     end
