@@ -490,6 +490,8 @@ uv run python -m verificador_dpp.emissor_direto --ator celula
 
 💡 **`.env` atualizado automaticamente.** Após cada emissão, o script grava o `tx_hash` e `data_hash` direto no `.env` — você não precisa copiar/colar entre os comandos. A última linha do output mostra exatamente quais chaves foram escritas (`ATOR1_TX=…`, `TX_HASH_PACK=…`, etc.).
 
+💡 **Relatório HTML.** Após cada emissão bem-sucedida, o script gera um recibo HTML e abre automaticamente no navegador — com os dados da credencial emitida e link para a transação no Cexplorer.
+
 💡 **Label de metadata.** Usamos `1990` (escolha arbitrária, homenagem à Lei do Consumidor brasileira). Cardano metadata aceita qualquer inteiro \>= 1; o `verificador` escaneia **todos** os labels procurando o campo `uverify_template_id` (nossa convenção de schema — ver 1.6), então o número escolhido não afeta a verificação. Você poderia trocar o schema por outro DPP — desde que o verificador conheça o novo formato.
 
 ### 2.4 Opção B — Emissor via UVerify SDK
@@ -644,6 +646,8 @@ uv run python -m verificador_dpp.emissor_sdk --ator reciclagem
 
 💡 **`.env` atualizado automaticamente** — igual ao `emissor_direto`. Cada emissão grava `ATOR<N>_TX` e `DATA_HASH` no `.env`; quando o ator é `pack`, também grava `TX_HASH_PACK` (este último é usado pelo `verificador` como hint inicial quando o pack veio de B/C).
 
+💡 **Relatório HTML.** Igual à Opção A — após cada emissão, um recibo HTML é gerado e aberto automaticamente no navegador.
+
 💡 **Intervalo entre emissões.** Cada transação Cardano precisa de ~20-40s para confirmar na preprod. Se você rodar dois emissores em sequência rápida, o segundo pode falhar com `PENDING_TRANSACTION` ou `BadInputs` (porque o UTXO da tx anterior ainda não foi confirmado). O retry automático com backoff geralmente resolve isso, mas aguardar ~30s entre comandos evita delays desnecessários.
 
 ### 2.5 Opção C — Emissão via UI UVerify (sem código)
@@ -759,6 +763,8 @@ De Jequitinhonha a Europa: o Passaporte da Bateria
   Produto: Lote Litio Jequitinhonha 2026-03
   ...
 ```
+
+💡 **Relatório HTML.** Além da saída no terminal, o verificador gera um relatório HTML completo do passaporte e abre automaticamente no navegador — com cards coloridos para cada etapa da cadeia (origem, célula, pack, reciclagem).
 
 🎯 **Insight:** o relatório final não distingue qual ator foi emitido por qual canal. Esse é o ponto — **a cadeia on-chain é a única fonte de verdade**, independente de como cada credencial chegou lá.
 
