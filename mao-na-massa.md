@@ -488,12 +488,6 @@ uv run python -m verificador_dpp.emissor_direto --ator origem
 uv run python -m verificador_dpp.emissor_direto --ator celula
 ```
 
-**`Eg :tx --ator origem`**  
-[**`https://preprod.cexplorer.io/tx/722de44575ad8936bbd65685f9d2c3c2a12d6cd58887828dda8b2ea55a589df1?tab=metadata`](https://preprod.cexplorer.io/tx/722de44575ad8936bbd65685f9d2c3c2a12d6cd58887828dda8b2ea55a589df1?tab=metadata)**
-
-**`Eg :tx --ator  celula`**  
-[**`https://preprod.cexplorer.io/tx/61c943e5a80e57b182a1774d2b6f44045327bd61253b1ead530bb256af1a409e?tab=metadata`](https://preprod.cexplorer.io/tx/61c943e5a80e57b182a1774d2b6f44045327bd61253b1ead530bb256af1a409e?tab=metadata)**
-
 💡 **`.env` atualizado automaticamente.** Após cada emissão, o script grava o `tx_hash` e `data_hash` direto no `.env` — você não precisa copiar/colar entre os comandos. A última linha do output mostra exatamente quais chaves foram escritas (`ATOR1_TX=…`, `TX_HASH_PACK=…`, etc.).
 
 💡 **Label de metadata.** Usamos `1990` (escolha arbitrária, homenagem à Lei do Consumidor brasileira). Cardano metadata aceita qualquer inteiro \>= 1; o `verificador` escaneia **todos** os labels procurando o campo `uverify_template_id` (nossa convenção de schema — ver 1.6), então o número escolhido não afeta a verificação. Você poderia trocar o schema por outro DPP — desde que o verificador conheça o novo formato.
@@ -566,11 +560,6 @@ def sign_tx(unsigned_cbor_hex: str) -> str:
     # Devolve o witness set em CBOR-hex - formato que o SDK espera
     return TransactionWitnessSet(vkey_witnesses=[witness]).to_cbor_hex()
 ```
-
-Pontos críticos:
-
-- `to_non_extended()` é essencial: a witness Cardano usa a chave pública Ed25519 de **32 bytes** — sem o chain code do CIP-1852.
-- A assinatura é dos **64 bytes** do hash do `transaction_body`.
 
 **Callback de assinatura de mensagem** (`sign_message` — CIP-8):
 
@@ -653,12 +642,6 @@ uv run python -m verificador_dpp.emissor_sdk --ator pack
 uv run python -m verificador_dpp.emissor_sdk --ator reciclagem
 ```
 
-**`Eg :tx --ator origem (UVerify SDK)`**
-[**`https://preprod.cexplorer.io/tx/366193ea3cb28e71be5218bfd55c9df1f6ef38db7f2a8c3c90893e13b58b7c7c`**](https://preprod.cexplorer.io/tx/366193ea3cb28e71be5218bfd55c9df1f6ef38db7f2a8c3c90893e13b58b7c7c)
-
-**`Eg :tx --ator celula (UVerify SDK)`**
-[**`https://preprod.cexplorer.io/tx/27435cf7191350027cd1d42990198852502b59829024d8314d5268c6d95f4771`**](https://preprod.cexplorer.io/tx/27435cf7191350027cd1d42990198852502b59829024d8314d5268c6d95f4771)
-
 💡 **`.env` atualizado automaticamente** — igual ao `emissor_direto`. Cada emissão grava `ATOR<N>_TX` e `DATA_HASH` no `.env`; quando o ator é `pack`, também grava `TX_HASH_PACK` (este último é usado pelo `verificador` como hint inicial quando o pack veio de B/C).
 
 💡 **Intervalo entre emissões.** Cada transação Cardano precisa de ~20-40s para confirmar na preprod. Se você rodar dois emissores em sequência rápida, o segundo pode falhar com `PENDING_TRANSACTION` ou `BadInputs` (porque o UTXO da tx anterior ainda não foi confirmado). O retry automático com backoff geralmente resolve isso, mas aguardar ~30s entre comandos evita delays desnecessários.
@@ -676,9 +659,6 @@ Não escreve uma linha de Python. Use o app oficial do UVerify em [https://app.p
 3. **Preencher o formulário.** Cole os campos do payload do ator desejado (use os valores em `_payloads.py` como referência — ou copie do JSON na Seção 2.2).   
      
 4. **Criar Certificado.** Clique em **Create Trust Certificate** → a carteira (Eternl/Lace) abre um popup de assinatura → Digite sua senha e **Sign**. Aguarde \~20-40 s pela confirmação on-chain.
-
-**`Eg: UVerify UI Validator`**  
-**`https://app.preprod.uverify.io/verify/4c075ab0d85a1e3ee249ccac594d188eb23c8d0d4b8aa890e795e92f550f45fb/2?serial=ML-JQT-2026-03-043`**
 
 5. **Copiar o tx hash.** A tela de sucesso mostra o tx hash da emissão. Copie-o e cole no `.env`:
 
@@ -843,9 +823,6 @@ A diferença em relação aos outros atores: a recicladora referencia **todas** 
 ```
 
 A cadeia forma um grafo acíclico verificável por qualquer parte — desde o regulador europeu que quer checar elegibilidade ao EU Battery Regulation, até o estudante que está fazendo TCC sobre circularidade.
-
-**`Eg :tx --ator reciclagem (UVerify SDK)`**
-[**`https://preprod.cexplorer.io/tx/3dbb183770f1d8bb786cf86e2e4619d932efde8fd740bd3b60304223698ce71c`**](https://preprod.cexplorer.io/tx/3dbb183770f1d8bb786cf86e2e4619d932efde8fd740bd3b60304223698ce71c)
 
 ## Seção 5 — Troubleshooting
 
