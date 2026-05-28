@@ -484,8 +484,19 @@ flowchart TB
   (estrutura `UVerifyStateRedeemer`) e em sequencias de 32 bytes no inline datum.
 - O payload completo fica armazenado off-chain no servidor UVerify, acessivel via
   `GET /api/v1/verify/{data_hash}`.
-- Leitura: extrair `data_hash` do redeemer (fonte confiavel) ou do inline datum
-  (fallback heuristico), depois consultar a API publica do UVerify.
+- Leitura: o verificador precisa descobrir o `data_hash` que esta gravado na
+  transacao para poder consultar a API do UVerify. Ele tenta dois caminhos, em
+  ordem:
+  1. **Redeemer** (caminho principal): extrai o `data_hash` diretamente do
+     redeemer — a estrutura que o smart contract recebe para validar a transacao.
+     E a fonte mais confiavel porque o proprio contrato garante o formato.
+  2. **Inline datum** (alternativa): se o redeemer nao estiver acessivel, o
+     verificador varre o datum da transacao procurando sequencias de 32 bytes
+     que correspondam ao tamanho de um hash SHA-256. E uma busca por tentativa,
+     nao uma leitura direta.
+  Com o `data_hash` em maos, consulta `GET /api/v1/verify/{data_hash}` na API
+  publica do UVerify e recebe de volta o payload completo (nome, GTIN, origem,
+  materiais, referencias, etc.).
 - Vantagem: transacao menor on-chain; dados sensiveis podem ser controlados off-chain.
 
 **Convergencia:**
