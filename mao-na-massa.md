@@ -251,8 +251,8 @@ uv --version        # uv 0.5.* ou superior
 ### 0.6 Starter repo
 
 ```shell
-git clone https://github.com/darlisagc/cardano-dpp-workshop
-cd cardano-dpp-workshop
+git clone https://github.com/darlisagc/cardano-battery-passport
+cd cardano-battery-passport
 uv sync                  # cria .venv, lê pyproject.toml, instala tudo do uv.lock
 cp .env.example .env     # vamos preencher na proxima secao
 ```
