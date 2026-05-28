@@ -266,12 +266,17 @@ sequenceDiagram
     rect rgb(255, 243, 205)
     Note over V,BF: Passo 1 — Buscar credencial do Pack
     V->>BF: Busca metadata da tx do Pack
-    alt Opcao A — dados na propria transacao
-        BF-->>V: Payload completo (label 1990)
-    else Opcoes B/C — dados no servidor UVerify
-        BF-->>V: Apenas hash do certificado
-        V->>UV: Busca payload pelo hash
-        UV-->>V: Payload completo do Pack
+    alt Opcao A — payload gravado direto na transacao
+        BF-->>V: Metadata nativa (label 1990) com todos os campos
+        Note over V: Encontra uverify_template_id no label 1990
+        Note over V: Extrai nome, GTIN, origem, materiais, referencias
+    else Opcoes B/C — payload no servidor UVerify
+        BF-->>V: Sem metadata nativa na transacao
+        V->>BF: Le o redeemer da transacao (estrutura do smart contract)
+        BF-->>V: Extrai o data_hash (impressao digital do certificado)
+        V->>UV: GET /verify/{data_hash}
+        UV-->>V: JSON com todos os campos do certificado
+        Note over V: Extrai nome, GTIN, origem, materiais, referencias
     end
     end
 
@@ -279,12 +284,17 @@ sequenceDiagram
     Note over V,BF: Passo 2 — Seguir referencia para Celula
     Note over V: Le ref_celula_tx da credencial do Pack
     V->>BF: Busca metadata da tx da Celula
-    alt Opcao A
-        BF-->>V: Payload completo (label 1990)
-    else Opcoes B/C
-        BF-->>V: Apenas hash do certificado
-        V->>UV: Busca payload pelo hash
-        UV-->>V: Payload completo da Celula
+    alt Opcao A — payload gravado direto na transacao
+        BF-->>V: Metadata nativa (label 1990) com todos os campos
+        Note over V: Encontra uverify_template_id no label 1990
+        Note over V: Extrai nome, GTIN, origem, materiais, referencias
+    else Opcoes B/C — payload no servidor UVerify
+        BF-->>V: Sem metadata nativa na transacao
+        V->>BF: Le o redeemer da transacao
+        BF-->>V: Extrai o data_hash
+        V->>UV: GET /verify/{data_hash}
+        UV-->>V: JSON com todos os campos do certificado
+        Note over V: Extrai nome, GTIN, origem, materiais, referencias
     end
     end
 
@@ -292,12 +302,17 @@ sequenceDiagram
     Note over V,BF: Passo 3 — Seguir referencia para Origem
     Note over V: Le ref_origem_tx da credencial da Celula
     V->>BF: Busca metadata da tx da Origem
-    alt Opcao A
-        BF-->>V: Payload completo (label 1990)
-    else Opcoes B/C
-        BF-->>V: Apenas hash do certificado
-        V->>UV: Busca payload pelo hash
-        UV-->>V: Payload completo da Origem
+    alt Opcao A — payload gravado direto na transacao
+        BF-->>V: Metadata nativa (label 1990) com todos os campos
+        Note over V: Encontra uverify_template_id no label 1990
+        Note over V: Extrai nome, GTIN, origem, materiais, referencias
+    else Opcoes B/C — payload no servidor UVerify
+        BF-->>V: Sem metadata nativa na transacao
+        V->>BF: Le o redeemer da transacao
+        BF-->>V: Extrai o data_hash
+        V->>UV: GET /verify/{data_hash}
+        UV-->>V: JSON com todos os campos do certificado
+        Note over V: Extrai nome, GTIN, origem, materiais, referencias
     end
     end
 
