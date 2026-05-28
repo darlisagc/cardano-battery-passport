@@ -38,46 +38,26 @@ montando assim o Passaporte completo da Bateria.
 
 ```mermaid
 flowchart TB
-    subgraph A1["MineraLitio"]
-        direction LR
-        a1p["Lote Litio Jequitinhonha 2026-03"]
-        a1l["Aracuai, MG, BR"]
-        a1s["Serial: ML-JQT-2026-03-042"]
-    end
+    A1["🟢 Ator 1 — MineraLitio\nLote Litio Jequitinhonha 2026-03\nAracuai, MG, BR"]
+    A2["🔵 Ator 2 — CellTech\nCelulas NMC 811 - Lote BA-2026-04\nCamacari, BA, BR"]
+    A3["🟡 Ator 3 — PackMontadora\nPack EV 75kWh - SP-2026-04\nSao Bernardo do Campo, SP, BR"]
+    A4["🔴 Ator 4 — RecicLar\nReciclagem Pack 75kWh - SR-2031-08\nSorocaba, SP, BR"]
 
-    subgraph A2["CellTech"]
-        direction TB
-        a2p["Celulas NMC 811 - Lote BA-2026-04-008"]
-        a2l["Camacari, BA, BR"]
-        a2s["Serial: CT-BA-2026-04-008"]
-    end
-
-    subgraph A3["PackMontadora"]
-        direction TB
-        a3p["Pack EV 75kWh - SP-2026-04-155"]
-        a3l["Sao Bernardo do Campo, SP, BR"]
-        a3s["Serial: PM-SP-2026-04-155"]
-    end
-
-    subgraph A4["RecicLar"]
-        direction TB
-        a4p["Reciclagem Pack 75kWh - SR-2031-08-001"]
-        a4l["Sorocaba, SP, BR"]
-        a4s["Serial: RL-SR-2031-08-001"]
-    end
-
-    A1 -- "ref_origem_tx\nref_origem_data_hash" --> A2
-    A2 -- "ref_celula_tx\nref_celula_data_hash" --> A3
-    A3 -- "ref_pack_tx\nref_pack_data_hash" --> A4
-
-    A1 -. "ref_origem_tx\nref_origem_data_hash" .-> A4
-    A2 -. "ref_celula_tx\nref_celula_data_hash" .-> A4
+    A1 -- "① ref_origem_tx" --> A2
+    A2 -- "② ref_celula_tx" --> A3
+    A3 -- "③ ref_pack_tx" --> A4
 
     style A1 fill:#d4edda,stroke:#28a745
     style A2 fill:#cce5ff,stroke:#007bff
     style A3 fill:#fff3cd,stroke:#ffc107
     style A4 fill:#f8d7da,stroke:#dc3545
 ```
+
+> **Nota:** RecicLar (Ator 4) referencia **todos** os 3 atores anteriores
+> (`ref_origem_tx`, `ref_celula_tx`, `ref_pack_tx`), permitindo
+> rastreabilidade completa em uma unica consulta. Cada referencia inclui
+> tambem o `_data_hash` correspondente (sha256 do gtin+serial) para
+> lookup na API UVerify.
 
 **Legenda de cores:**
 - Verde — Mineracao (origem da materia-prima)
