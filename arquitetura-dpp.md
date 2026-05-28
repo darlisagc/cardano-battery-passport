@@ -602,4 +602,4 @@ via APIs.**
 | **Mnemonic** | Frase de 24 palavras que gera a carteira (wallet) Cardano. A partir dela derivam-se as chaves publica e privada para assinar transacoes. |
 | **Wallet** | Carteira digital que armazena as chaves criptograficas necessarias para assinar transacoes na blockchain. |
 | **Label 1990** | Numero arbitrario escolhido para identificar metadados DPP nas transacoes Cardano deste sistema. |
-| **ref_*_tx** | Campo nos payloads que armazena o TX hash da credencial de outro ator na cadeia (referencia cruzada). Anteriormente chamado `cert_*_credential_tx`. |
+| **ref_*_tx** | Campo nos payloads que armazena o TX hash da credencial de outro ator na cadeia (referencia cruzada). |
