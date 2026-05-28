@@ -21,12 +21,13 @@ Pre-requisitos no .env (ver .env.example):
 
 Fluxo da emissao (cada `--ator <X>`):
     1. Carregar payload DPP do ator       (_payloads.py)
-    2. Derivar carteira HD do mnemonico   (wallet.py)
-    3. Conectar ao Blockfrost preprod
-    4. Construir tx self-pay com metadata  (como enviar uma carta para
+    2. Calcular data_hash e inclui-lo no payload
+    3. Derivar carteira HD do mnemonico   (wallet.py)
+    4. Conectar ao Blockfrost preprod
+    5. Construir tx self-pay com metadata  (como enviar uma carta para
        si mesmo com o certificado como "anexo")
-    5. Assinar com a chave de pagamento
-    6. Submeter a rede preprod
+    6. Assinar com a chave de pagamento
+    7. Submeter a rede preprod
 """
 
 from __future__ import annotations

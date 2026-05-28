@@ -351,7 +351,7 @@ Existem **duas formas distintas** de ancorar um DPP em Cardano, que definem **on
 
 | Padrão | Onde fica o payload | Como ler | Opções no workshop |
 | :---- | :---- | :---- | :---- |
-| **Metadata nativa Cardano** | Direto na transação, em `auxiliary_data` sob um label numérico (`1990` neste workshop). Analogia: como escrever o documento inteiro na "ata" do cartório. | Qualquer indexador Cardano: Blockfrost, Yaci Store, db-sync | **Opção A** (`emissor_direto`) |
+| **Metadata nativa Cardano** | Direto na transação, em `auxiliary_data` sob um label numérico (`1990` neste workshop), incluindo o `data_hash` (`sha256(gtin+serial)`). Analogia: como escrever o documento inteiro na "ata" do cartório. | Qualquer indexador Cardano: Blockfrost, Yaci Store, db-sync | **Opção A** (`emissor_direto`) |
 | **Anchor + off-chain** | Só um hash (impressão digital: `sha256(gtin+serial)`) gravado em datum de um output de script; payload rico vive no servidor do UVerify. Analogia: como registrar apenas a "impressão digital" do documento no cartório, guardando o documento completo em outro lugar. | API REST da UVerify: `verify/{data_hash}` | **Opções B e C** (SDK e UI) |
 
 **Trade-offs:**
@@ -411,6 +411,7 @@ Os payloads dos quatro atores ficam em `_payloads.py`, seguindo o template `digi
 | `name`, `issuer`, `gtin` | sim | identidade do lote |
 | `uv_url_serial` | sim | `sha256(serial)` — diferente do `hash` |
 | `ref_*_tx` | convenção do workshop | refs encadeadas (tx hash do ator anterior) |
+| `data_hash` | Opção A | `sha256(gtin+serial)` do proprio produto — incluido na metadata on-chain pela Opcao A |
 | `ref_*_data_hash` | convenção do workshop | sha256(gtin+serial) do ator referenciado — hint para lookup UVerify |
 | `mat_*` | opcional | composição |
 | `cert_*` | opcional | certificações reais (ex: `cert_esg_iso14001`) |
@@ -443,11 +444,12 @@ Esta opção é **puramente Python & Cardano** — usa apenas PyCardano para mon
 
 O script em `emissor_direto.py`:
 
-1. Monta o payload DPP em memória (`_payloads.py`, schema documentado em 1.2).  
-2. Conecta ao Blockfrost preprod via `BlockFrostChainContext`.  
-3. Constrói uma tx com `TransactionBuilder` e anexa o payload como `AuxiliaryData(Metadata({1990: payload}))`. Como toda tx Cardano precisa de pelo menos um output (UTxO model) e não estamos pagando ninguém, deixamos o `change_address` mandar a sobra (`input - fee`) **de volta para o nosso próprio endereço** — vira um novo UTxO seu. **O custo real é apenas o fee da rede (\~0.18 tADA)**.  
-4. Assina com a chave HD derivada do mnemônico.  
-5. Submete via Blockfrost e devolve o tx hash.
+1. Monta o payload DPP em memória (`_payloads.py`, schema documentado em 1.2).
+2. Calcula o `data_hash` (`sha256(gtin+serial)`) e o inclui no payload — fica visível on-chain no Cexplorer e facilita lookups cruzados com a API UVerify.
+3. Conecta ao Blockfrost preprod via `BlockFrostChainContext`.
+4. Constrói uma tx com `TransactionBuilder` e anexa o payload como `AuxiliaryData(Metadata({1990: payload}))`. Como toda tx Cardano precisa de pelo menos um output (UTxO model) e não estamos pagando ninguém, deixamos o `change_address` mandar a sobra (`input - fee`) **de volta para o nosso próprio endereço** — vira um novo UTxO seu. **O custo real é apenas o fee da rede (\~0.18 tADA)**.  
+5. Assina com a chave HD derivada do mnemônico.
+6. Submete via Blockfrost e devolve o tx hash.
 
 **Trecho-chave**
 

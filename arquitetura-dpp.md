@@ -28,9 +28,10 @@ Essas referencias sao feitas por dois campos:
 - **`ref_*_tx`** — O TX hash (numero de protocolo) do registro da
   empresa anterior na blockchain. Com ele, voce pode localizar exatamente aquele
   registro.
-- **`ref_*_data_hash`** — A impressao digital SHA-256 que permite buscar os
-  dados completos na API do UVerify (util quando os dados nao estao diretamente
-  na blockchain).
+- **`ref_*_data_hash`** — A impressao digital SHA-256 (`sha256(gtin+serial)`) do
+  produto referenciado. Serve como hint para o verificador: quando a credencial
+  referenciada foi emitida via UVerify (B/C), permite consultar a API diretamente
+  sem precisar extrair o hash da transacao.
 
 O verificador (quem audita) percorre essa cadeia **de tras para frente**: comeca
 pelo Pack (montagem final), segue a referencia para Celula, depois para Origem,
@@ -200,7 +201,7 @@ flowchart TB
 | **Assinatura** | PyCardano `build_and_sign()` | Callback `sign_tx` via SDK | Wallet no navegador |
 | **Dependencia externa** | Apenas Blockfrost | Blockfrost + UVerify SDK | UVerify Web |
 | **Precisa de internet alem da blockchain?** | Nao (dados on-chain) | Sim (payload no servidor UVerify) | Sim (payload no servidor UVerify) |
-| **Dados ficam publicos on-chain?** | Sim (payload inteiro visivel) | Nao (apenas hash on-chain) | Nao (apenas hash on-chain) |
+| **Dados ficam publicos on-chain?** | Sim (payload inteiro + `data_hash` visiveis) | Nao (apenas hash on-chain) | Nao (apenas hash on-chain) |
 | **Complexidade de codigo** | Media (construir tx manualmente) | Baixa (SDK abstrai a complexidade) | Nenhuma (interface visual) |
 
 ### Qual opcao escolher?
@@ -453,7 +454,7 @@ flowchart TB
 
 | Elemento | Opcao A (metadata nativa) | Opcoes B/C (UVerify smart contract) |
 |----------|--------------------------|--------------------------------------|
-| **Onde esta o payload completo?** | Dentro da transacao, no label 1990 (on-chain) | No servidor UVerify, acessivel via API (off-chain) |
+| **Onde esta o payload completo?** | Dentro da transacao, no label 1990 (on-chain), incluindo o `data_hash` | No servidor UVerify, acessivel via API (off-chain) |
 | **Como o verificador encontra?** | `Blockfrost.transaction_metadata(tx_hash)` | Extrai data_hash do redeemer/datum, depois `GET /api/v1/verify/{data_hash}` |
 | **Vantagem** | Auto-contido — nenhuma dependencia externa para verificacao | Transacao menor on-chain; dados sensiveis podem ser controlados off-chain |
 | **Desvantagem** | Payload inteiro fica publico; transacao ocupa mais espaco | Depende do servidor UVerify estar disponivel para leitura |
@@ -461,8 +462,10 @@ flowchart TB
 ### Detalhes de cada formato
 
 **Opcao A — metadata nativa:**
-- O payload inteiro (todos os campos `name`, `issuer`, `gtin`, `mat_*`, `ref_*`, `cert_*`, etc.)
+- O payload inteiro (todos os campos `name`, `issuer`, `gtin`, `data_hash`, `mat_*`, `ref_*`, `cert_*`, etc.)
   e armazenado diretamente na metadata da transacao sob o label `1990`.
+  O `data_hash` (`sha256(gtin+serial)`) tambem e incluido na metadata, permitindo
+  lookups cruzados com a API do UVerify e facilitando a verificacao em cadeias mistas.
 - Leitura: `Blockfrost.transaction_metadata(tx_hash)` retorna o dict completo.
 - Vantagem: auto-contido, nenhuma dependencia externa para verificacao.
 
@@ -501,7 +504,7 @@ uma credencial para a proxima como hints para acelerar o lookup UVerify.
 |---------|------|-----------|
 | `_payloads.py` | Dados | Define os dados DPP dos 4 atores. Cada payload e um dicionario de pares chave-valor (nome do produto, GTIN, origem, pegada de carbono, materiais e referencias aos atores anteriores). As opcoes A e B usam os mesmos payloads. |
 | `wallet.py` | Core | Deriva chave de assinatura e endereco preprod a partir de um mnemonico BIP-39 de 24 palavras usando o padrao CIP-1852. O endereco resultante e o mesmo que voce ve no Eternl ou Lace. Compartilhado por ambos os emissores. |
-| `emissor_direto.py` | Emissao (A) | Constroi uma transacao Cardano com o `TransactionBuilder` do PyCardano, anexa o payload DPP como metadata nativa (label 1990), assina com a chave da carteira e submete via Blockfrost. Sem smart contract. |
+| `emissor_direto.py` | Emissao (A) | Constroi uma transacao Cardano com o `TransactionBuilder` do PyCardano, anexa o payload DPP (incluindo `data_hash`) como metadata nativa (label 1990), assina com a chave da carteira e submete via Blockfrost. Sem smart contract. |
 | `emissor_sdk.py` | Emissao (B) | Emite atraves do SDK UVerify, que interage com smart contracts Plutus V3 na preprod. Inclui tratamento robusto para state datum, colateral, status codes, CIP-8 e exponential backoff. |
 | `verificador.py` | Verificacao | Verificador unificado. Busca a credencial na chain (metadata nativa ou API UVerify), le as referencias `ref_*_tx` e percorre a cadeia ate a origem. Funciona com qualquer combinacao de metodos de emissao. |
 | `modelos.py` | Dados | Define `CredencialDPP` (credencial individual com dados do produto, materiais e referencias) e `PassaporteBateria` (agrupa origem + celula + pack + reciclagem opcional). |

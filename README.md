@@ -47,7 +47,7 @@ Existem **tres formas** de emitir credenciais. Todas produzem credenciais on-cha
 
 ### Opcao A — Metadata nativa via PyCardano (`emissor_direto`)
 
-Constroi uma transacao Cardano diretamente usando o `TransactionBuilder` do PyCardano, anexando o payload DPP como **metadata nativa da transacao** (label 1990). Os dados da credencial sao gravados diretamente na transacao — sem smart contract envolvido.
+Constroi uma transacao Cardano diretamente usando o `TransactionBuilder` do PyCardano, anexando o payload DPP como **metadata nativa da transacao** (label 1990). Os dados da credencial — incluindo o `data_hash` (`sha256(gtin+serial)`) — sao gravados diretamente na transacao, sem smart contract envolvido.
 
 ```bash
 uv run python -m verificador_dpp.emissor_direto --ator origem
@@ -132,7 +132,7 @@ cardano-battery-passport/
 |---------|------|-----------|
 | `_payloads.py` | Dados | Define os dados DPP dos 4 atores. Cada payload e um dicionario de pares chave-valor (nome do produto, GTIN, origem, pegada de carbono, materiais e referencias aos atores anteriores). As opcoes A e B usam os mesmos payloads. |
 | `wallet.py` | Core | Deriva chave de assinatura e endereco preprod a partir de um mnemonico BIP-39 de 24 palavras usando o padrao CIP-1852. O endereco resultante e o mesmo que voce ve no Eternl ou Lace. Compartilhado por ambos os emissores. |
-| `emissor_direto.py` | Emissao (A) | Constroi uma transacao Cardano com o `TransactionBuilder` do PyCardano, anexa o payload DPP como metadata nativa (label 1990), assina com a chave da carteira e submete via Blockfrost. Sem smart contract. |
+| `emissor_direto.py` | Emissao (A) | Constroi uma transacao Cardano com o `TransactionBuilder` do PyCardano, anexa o payload DPP (incluindo `data_hash`) como metadata nativa (label 1990), assina com a chave da carteira e submete via Blockfrost. Sem smart contract. |
 | `emissor_sdk.py` | Emissao (B) | Emite atraves do SDK UVerify, que interage com smart contracts Plutus V3 na preprod. Inclui tratamento robusto para state datum, colateral, status codes, CIP-8 e exponential backoff. |
 | `verificador.py` | Verificacao | Verificador unificado. Busca a credencial na chain (metadata nativa ou API UVerify), le as referencias `ref_*_tx` e percorre a cadeia ate a origem. Funciona com qualquer combinacao de metodos de emissao. |
 | `modelos.py` | Dados | Define `CredencialDPP` (credencial individual com dados do produto, materiais e referencias) e `PassaporteBateria` (agrupa origem + celula + pack + reciclagem opcional). |
