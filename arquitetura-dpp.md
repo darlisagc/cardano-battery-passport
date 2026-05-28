@@ -225,6 +225,38 @@ suprimentos. Ele recebe como entrada o TX hash da ultima transacao (o Pack) e
 percorre toda a cadeia de tras para frente, coletando os certificados de cada
 empresa ate montar o Passaporte completo da Bateria.
 
+### Como o verificador percorre a cadeia (de ator em ator)
+
+O verificador comeca com um unico dado: o **TX hash do Pack** (ou da Reciclagem).
+A partir dai, ele le a credencial desse ator e encontra dentro dela o campo
+`ref_celula_tx` — que e o TX hash da credencial anterior. Usa esse hash para
+buscar a credencial da Celula, que por sua vez contem `ref_origem_tx`. E assim
+por diante, ate chegar na Origem (que nao referencia ninguem — e o inicio da cadeia).
+
+```mermaid
+flowchart TB
+    START["Entrada: TX hash do Pack"]
+    PACK["Credencial do Pack\n— nome, GTIN, origem, materiais —\ncontem: ref_celula_tx = abc123..."]
+    CELULA["Credencial da Celula\n— nome, GTIN, origem, materiais —\ncontem: ref_origem_tx = def456..."]
+    ORIGEM["Credencial da Origem\n— nome, GTIN, origem, materiais —\nnao referencia ninguem (inicio da cadeia)"]
+    FIM["Passaporte completo montado\nOrigem + Celula + Pack"]
+
+    START -- "Busca na blockchain" --> PACK
+    PACK -- "Segue ref_celula_tx = abc123..." --> CELULA
+    CELULA -- "Segue ref_origem_tx = def456..." --> ORIGEM
+    ORIGEM -- "Cadeia completa" --> FIM
+
+    style START fill:#fff3cd,stroke:#ffc107
+    style PACK fill:#fff3cd,stroke:#ffc107
+    style CELULA fill:#cce5ff,stroke:#007bff
+    style ORIGEM fill:#d4edda,stroke:#28a745
+    style FIM fill:#e2d5f1,stroke:#6f42c1
+```
+
+Cada seta representa o verificador **seguindo uma referencia** gravada dentro
+da credencial anterior. E como seguir pistas: cada certificado diz "o ator
+anterior esta registrado nesta transacao" — e o verificador vai la conferir.
+
 ### Como funciona a busca (os dois caminhos)
 
 Para cada certificado na cadeia, o verificador precisa recuperar os dados
