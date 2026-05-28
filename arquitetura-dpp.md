@@ -499,31 +499,20 @@ uma credencial para a proxima como hints para acelerar o lookup UVerify.
 
 ## 5. Mapa de Arquivos
 
-**Modulos principais:**
-
-- **`_payloads.py`** — Define os dados DPP dos 4 atores. Cada payload e um dicionario de pares chave-valor (nome do produto, GTIN, origem, pegada de carbono, materiais e referencias aos atores anteriores). As opcoes de emissao A e B usam os mesmos payloads, garantindo dados on-chain identicos independente do metodo de emissao.
-
-- **`wallet.py`** — Deriva uma chave de assinatura de pagamento e um endereco preprod a partir de um mnemonico BIP-39 de 24 palavras usando o padrao de derivacao HD CIP-1852. O endereco resultante e o mesmo que voce ve no Eternl ou Lace. Compartilhado por ambos os emissores.
-
-- **`emissor_direto.py`** (Opcao A) — Constroi uma transacao Cardano com o `TransactionBuilder` do PyCardano, anexa o payload DPP como metadata nativa (label 1990), assina com a chave da carteira e submete na rede via Blockfrost. Direto e rapido — sem smart contract envolvido.
-
-- **`emissor_sdk.py`** (Opcao B) — Emite atraves do SDK UVerify, que interage com smart contracts Plutus V3 na preprod. Inclui tratamento robusto para limpeza de state datum, preparacao de UTXO de colateral, interpretacao de status codes, assinatura de mensagens CIP-8 e retry com exponential backoff. Veja os comentarios inline no codigo para detalhes de implementacao.
-
-- **`verificador.py`** — O verificador unificado. Dado um tx hash, busca a credencial na chain (tentando primeiro metadata nativa, depois API UVerify), le as referencias `ref_*_tx` e percorre recursivamente a cadeia ate chegar na origem. Funciona com qualquer combinacao de metodos de emissao. Gera um passaporte consolidado no terminal e um relatorio HTML.
-
-**Dados e parsing:**
-
-- **`modelos.py`** — Define `CredencialDPP` (uma credencial individual com dados do produto, materiais e referencias da cadeia) e `PassaporteBateria` (agrupa origem + celula + pack + reciclagem opcional em um passaporte).
-
-- **`parser_credencial.py`** — Converte metadata bruta do Blockfrost (que vem como objetos Namespace aninhados) em objetos `CredencialDPP` estruturados. Trata o formato do template `digitalProductPassport` e classifica campos por prefixo (`ref_*`, `mat_*`, `uv_*`).
-
-**Relatorios:**
-
-- **`relatorio_passaporte.py`** — Gera o relatorio textual do passaporte impresso no terminal apos a verificacao.
-- **`relatorio_html.py`** — Gera um relatorio HTML com cards coloridos para cada etapa da cadeia (verde=origem, azul=celulas, amarelo=pack, teal=reciclagem).
-- **`relatorio_emissao_html.py`** — Gera um recibo HTML apos cada emissao individual, com link para a transacao no Cexplorer.
-- **`relatorio_reciclagem_html.py`** — Gera um relatorio HTML dedicado para a credencial de reciclagem (Ator 4).
-- **`_html_utils.py`** — Helpers compartilhados: escape de HTML e geracao de links Cexplorer preprod.
+| Arquivo | Tipo | Descricao |
+|---------|------|-----------|
+| `_payloads.py` | Dados | Define os dados DPP dos 4 atores. Cada payload e um dicionario de pares chave-valor (nome do produto, GTIN, origem, pegada de carbono, materiais e referencias aos atores anteriores). As opcoes A e B usam os mesmos payloads. |
+| `wallet.py` | Core | Deriva chave de assinatura e endereco preprod a partir de um mnemonico BIP-39 de 24 palavras usando o padrao CIP-1852. O endereco resultante e o mesmo que voce ve no Eternl ou Lace. Compartilhado por ambos os emissores. |
+| `emissor_direto.py` | Emissao (A) | Constroi uma transacao Cardano com o `TransactionBuilder` do PyCardano, anexa o payload DPP como metadata nativa (label 1990), assina com a chave da carteira e submete via Blockfrost. Sem smart contract. |
+| `emissor_sdk.py` | Emissao (B) | Emite atraves do SDK UVerify, que interage com smart contracts Plutus V3 na preprod. Inclui tratamento robusto para state datum, colateral, status codes, CIP-8 e exponential backoff. |
+| `verificador.py` | Verificacao | Verificador unificado. Busca a credencial na chain (metadata nativa ou API UVerify), le as referencias `ref_*_tx` e percorre a cadeia ate a origem. Funciona com qualquer combinacao de metodos de emissao. |
+| `modelos.py` | Dados | Define `CredencialDPP` (credencial individual com dados do produto, materiais e referencias) e `PassaporteBateria` (agrupa origem + celula + pack + reciclagem opcional). |
+| `parser_credencial.py` | Parsing | Converte metadata bruta do Blockfrost em objetos `CredencialDPP` estruturados. Trata o template `digitalProductPassport` e classifica campos por prefixo (`ref_*`, `mat_*`, `uv_*`). |
+| `relatorio_passaporte.py` | Relatorio | Gera o relatorio textual do passaporte no terminal apos a verificacao. |
+| `relatorio_html.py` | Relatorio | Gera relatorio HTML com cards coloridos para cada etapa da cadeia (verde=origem, azul=celulas, amarelo=pack, teal=reciclagem). |
+| `relatorio_emissao_html.py` | Relatorio | Gera recibo HTML apos cada emissao individual, com link para a transacao no Cexplorer. |
+| `relatorio_reciclagem_html.py` | Relatorio | Gera relatorio HTML dedicado para a credencial de reciclagem (Ator 4). |
+| `_html_utils.py` | Relatorio | Helpers compartilhados: escape de HTML e geracao de links Cexplorer preprod. |
 
 ---
 
