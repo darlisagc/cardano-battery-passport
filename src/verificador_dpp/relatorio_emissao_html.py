@@ -500,6 +500,7 @@ body {{
             ("name", "Produto"),
             ("issuer", "Emitente"),
             ("gtin", "GTIN"),
+            ("data_hash", "Data Hash"),
             ("origin", "Origem"),
             ("manufactured", "Fabricado em"),
             ("carbon_footprint", "Pegada de carbono"),

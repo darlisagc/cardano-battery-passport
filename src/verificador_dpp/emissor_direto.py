@@ -78,6 +78,10 @@ def emitir_direto(
     payload, serial, gtin = ATORES[ator](env)
     dh = data_hash(gtin, serial)
 
+    # Inclui o data_hash na metadata on-chain para que seja visivel
+    # no Cexplorer e facilite lookups cruzados com a API do UVerify.
+    payload["data_hash"] = dh
+
     # ----------------------------------------------------------------
     # Passo 2 — Carregar a carteira HD a partir do mnemonico.
     # Deriva chave de pagamento + endereco preprod via CIP-1852
