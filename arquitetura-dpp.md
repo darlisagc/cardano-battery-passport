@@ -242,9 +242,9 @@ caminhos**, como um menu de restaurante com prato principal e alternativa:
    usá-lo para consultar o servidor UVerify, onde o payload completo esta
    armazenado.
 
-### Termos tecnicos deste diagrama
+### Termos tecnicos usados no diagrama abaixo
 
-Antes de ler o diagrama, duas definicoes rapidas:
+Antes de ler o diagrama de sequencia, duas definicoes rapidas:
 
 - **Redeemer:** No contexto deste sistema, e uma estrutura de dados incluida na
   transacao que contem o data_hash do certificado. Pense nele como um "indice"
