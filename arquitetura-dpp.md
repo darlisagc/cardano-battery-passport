@@ -258,63 +258,55 @@ Antes de ler o diagrama de sequencia, duas definicoes rapidas:
 
 ```mermaid
 sequenceDiagram
-    participant V as verificador.py
-    participant BF as Blockfrost API
-    participant PC as ParserCredencial
-    participant UV as UVerify API (HTTP direto)
-    participant R as RelatorioPassaporte
+    participant V as Verificador
+    participant BF as Blockfrost
+    participant UV as UVerify API
+    participant R as Relatorio
 
-    Note over V: Passo 1/4 — Buscar credencial do Pack
-    Note over V: buscar_credencial(tx=TX_HASH_PACK, hint=DATA_HASH_PACK)
-    V->>BF: transaction_metadata(TX_HASH_PACK)
-    alt Caminho 1 — Metadata nativa encontrada (Opcao A)
-        BF-->>V: metadados com label 1990
-        V->>PC: extrair_credencial(metadados)
-        PC-->>V: CredencialDPP (pack)
-    else Caminho 2 — Sem metadata nativa (Opcoes B/C)
-        Note over V: Reunir candidatos data_hash de 3 fontes
-        Note over V: 1. hint (DATA_HASH_PACK do .env)
-        V->>BF: transaction_redeemers(tx_hash)
-        Note over V: 2. _extrair_hashes_do_redeemer()
-        V->>BF: transaction_utxos(tx_hash)
-        Note over V: 3. _walk_for_32byte() no inline datum
-        V->>UV: GET /api/v1/verify/{data_hash}
-        UV-->>V: JSON com metadata do certificado
-        Note over V: _verify_by_transaction_direct()
-        V-->>V: CredencialDPP (pack) + data_hashes
+    rect rgb(255, 243, 205)
+    Note over V,BF: Passo 1 — Buscar credencial do Pack
+    V->>BF: Busca metadata da tx do Pack
+    alt Opcao A — dados na propria transacao
+        BF-->>V: Payload completo (label 1990)
+    else Opcoes B/C — dados no servidor UVerify
+        BF-->>V: Apenas hash do certificado
+        V->>UV: Busca payload pelo hash
+        UV-->>V: Payload completo do Pack
+    end
     end
 
-    Note over V: Passo 2/4 — Seguir referencia para Celula
-    Note over V: tx = cred_pack.referencias["celula_tx"]
-    Note over V: hint = cred_pack.data_hashes["celula_data_hash"]
-    V->>BF: transaction_metadata(tx_hash_celula)
-    alt Caminho 1 — Metadata nativa (Opcao A)
-        BF-->>V: metadados
-        V->>PC: extrair_credencial(metadados)
-        PC-->>V: CredencialDPP (celula)
-    else Caminho 2 — UVerify (Opcoes B/C)
-        Note over V: Fontes: hint + redeemer + inline datum
-        V->>UV: GET /api/v1/verify/{data_hash}
-        UV-->>V: CredencialDPP (celula) + data_hashes
+    rect rgb(204, 229, 255)
+    Note over V,BF: Passo 2 — Seguir referencia para Celula
+    Note over V: Le ref_celula_tx da credencial do Pack
+    V->>BF: Busca metadata da tx da Celula
+    alt Opcao A
+        BF-->>V: Payload completo (label 1990)
+    else Opcoes B/C
+        BF-->>V: Apenas hash do certificado
+        V->>UV: Busca payload pelo hash
+        UV-->>V: Payload completo da Celula
+    end
     end
 
-    Note over V: Passo 3/4 — Seguir referencia para Origem
-    Note over V: tx = cred_celula.referencias["origem_tx"]
-    Note over V: hint = cred_celula.data_hashes["origem_data_hash"]
-    V->>BF: transaction_metadata(tx_hash_origem)
-    alt Caminho 1 — Metadata nativa (Opcao A)
-        BF-->>V: metadados
-        V->>PC: extrair_credencial(metadados)
-        PC-->>V: CredencialDPP (origem)
-    else Caminho 2 — UVerify (Opcoes B/C)
-        V->>UV: GET /api/v1/verify/{data_hash}
-        UV-->>V: CredencialDPP (origem)
+    rect rgb(212, 237, 218)
+    Note over V,BF: Passo 3 — Seguir referencia para Origem
+    Note over V: Le ref_origem_tx da credencial da Celula
+    V->>BF: Busca metadata da tx da Origem
+    alt Opcao A
+        BF-->>V: Payload completo (label 1990)
+    else Opcoes B/C
+        BF-->>V: Apenas hash do certificado
+        V->>UV: Busca payload pelo hash
+        UV-->>V: Payload completo da Origem
+    end
     end
 
-    Note over V: Passo 4/4 — Montar Passaporte e gerar relatorio
-    V->>V: PassaporteBateria(origem, celula, pack)
-    V->>R: gerar(passaporte)
-    R-->>V: Relatorio em portugues
+    rect rgb(226, 213, 241)
+    Note over V,R: Passo 4 — Montar Passaporte
+    V->>V: Junta origem + celula + pack
+    V->>R: Gera relatorio consolidado
+    R-->>V: Passaporte da Bateria completo
+    end
 ```
 
 ### Os dois caminhos de leitura por credencial — explicacao detalhada
