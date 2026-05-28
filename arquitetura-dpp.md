@@ -134,7 +134,7 @@ Antes de ver as opcoes, dois termos importantes:
 
 ```mermaid
 flowchart TB
-    PL["_payloads.py\npayload_origem() / payload_celula() / payload_pack()"]
+    PL["_payloads.py\npayload_origem() / payload_celula() / payload_pack() / payload_reciclagem()"]
 
     subgraph OpcaoA["Opcao A — PyCardano Direto"]
         direction TB
