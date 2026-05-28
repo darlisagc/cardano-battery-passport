@@ -38,10 +38,10 @@ montando assim o Passaporte completo da Bateria.
 
 ```mermaid
 flowchart TB
-    A1["🟢 Ator 1 — MineraLitio\nLote Litio Jequitinhonha 2026-03\nAracuai, MG, BR"]
-    A2["🔵 Ator 2 — CellTech\nCelulas NMC 811 - Lote BA-2026-04\nCamacari, BA, BR"]
-    A3["🟡 Ator 3 — PackMontadora\nPack EV 75kWh - SP-2026-04\nSao Bernardo do Campo, SP, BR"]
-    A4["🔴 Ator 4 — RecicLar\nReciclagem Pack 75kWh - SR-2031-08\nSorocaba, SP, BR"]
+    A1["Ator 1 — MineraLitio\nAracuai, MG"]
+    A2["Ator 2 — CellTech\nCamacari, BA"]
+    A3["Ator 3 — PackMontadora\nSao Bernardo do Campo, SP"]
+    A4["Ator 4 — RecicLar\nSorocaba, SP"]
 
     A1 -- "① ref_origem_tx" --> A2
     A2 -- "② ref_celula_tx" --> A3
