@@ -2,8 +2,6 @@
 
 **Workshop:** Passaporte Digital de Produto (DPP) para baterias de veículos elétricos, usando Cardano \+ UVerify \+ Python ([PyCardano](https://github.com/Python-Cardano/pycardano)).
 
-**Duração total do hands-on:** 180 min. 
-
 **Cenário:** quatro atores emitem e verificam credenciais DPP encadeadas que percorrem o ciclo de vida completo de uma bateria brasileira.
 
 ---
