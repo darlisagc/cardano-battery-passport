@@ -17,6 +17,8 @@ A partir de **fevereiro de 2027**, a União Europeia passa a exigir um **Battery
 
 Neste hands-on, **você interpreta os quatro atores** de uma única cadeia:
 
+> **⚠️ Nota sobre carteiras:** Em um cenário real de produção, **cada ator da cadeia teria sua própria carteira** (chave privada independente), garantindo que somente a empresa responsável possa assinar credenciais em seu nome. Neste workshop, por simplicidade, **todos os atores compartilham a mesma carteira** (mesmo mnemônico). Isso permite focar no encadeamento e na verificação sem a complexidade de gerenciar múltiplas carteiras e transferir tADA entre elas.
+
 - Em **2026**, a *MineraLitio* extrai um lote de Li₂CO₃ em Araçuaí (MG) e emite o primeiro DPP — **origem**.   
 - Logo depois, a *CellTech* monta células NMC em Camaçari (BA) e emite **célula**, referenciando *origem*.   
 - Em São Bernardo do Campo (SP), a *PackMontadora* monta o pack de 75 kWh e emite **pack**, referenciando *célula*.   
@@ -395,6 +397,8 @@ WALLET_MNEMONIC=palavra1 palavra2 ... palavra24    # Preprod ONLY
 ```
 
 ⚠️ **Preprod ONLY.** Cole apenas o mnemônico de uma carteira **preprod** que já recebeu tADA do faucet (Seção 0.3). **Nunca** cole um mnemônico mainnet em arquivo de texto.
+
+⚠️ **Uma carteira para todos os atores (simplificação do workshop).** No workshop, usamos um único `WALLET_MNEMONIC` para emitir credenciais de todos os 4 atores. Em produção, cada empresa (MineraLitio, CellTech, PackMontadora, RecicLar) teria sua própria carteira com chaves independentes — a assinatura criptográfica de cada credencial identificaria inequivocamente o emissor.
 
 ⚠️ **Opções B/C — URL da API.** Para que o SDK aponte para a rede preprod, defina `UVERIFY_API_URL` no `.env` (veja `.env.example`). Se não for definida, o SDK usa o default (`api.preprod.uverify.io`), mas é boa prática tornar isso explícito.
 
