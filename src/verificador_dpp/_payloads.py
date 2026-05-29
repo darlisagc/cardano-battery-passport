@@ -46,19 +46,27 @@ from typing import Callable
 
 
 def _student_id(env: dict[str, str] | None) -> str:
-    """Derive a deterministic 6-char hex suffix from WALLET_MNEMONIC.
+    """Derive a deterministic suffix from WALLET_MNEMONIC + RUN_ID.
 
     Each student in the workshop has a unique mnemonic, so every wallet
     gets its own serial namespace. This prevents data_hash collisions
     on UVerify when multiple students run the same code.
 
+    When RUN_ID is set in the environment, it is appended to the suffix
+    so that each test run produces unique data_hashes — avoiding stale
+    UTXO references when re-emitting credentials from the same wallet.
+
     Returns "000000" when no mnemonic is available (e.g. in tests
     without a configured wallet).
     """
     mnemonic = (env or {}).get("WALLET_MNEMONIC", "").strip()
+    run_id = (env or {}).get("RUN_ID", "").strip()
     if not mnemonic:
         return "000000"
-    return sha256(mnemonic.encode("utf-8")).hexdigest()[:6]
+    base = sha256(mnemonic.encode("utf-8")).hexdigest()[:6]
+    if run_id:
+        return f"{base}-{run_id}"
+    return base
 
 
 # ── Base serial prefixes and GTINs ────────────────────────────────

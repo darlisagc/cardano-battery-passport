@@ -27,6 +27,44 @@ Fluxo da emissao (cada `--ator <X>`):
     6. Garantir colateral para scripts Plutus V3
     7. Montar tx com tratamento de status codes
     8. Retry com exponential backoff (5 tentativas)
+
+NOTA SOBRE O DESIGN — Workshop vs. Producao:
+
+    Em producao, cada empresa da cadeia de suprimentos (MineraLitio,
+    CellTech, PackMontadora, RecicLar) teria a sua propria carteira
+    Cardano e cada produto fisico teria um serial unico. Nesse cenario
+    o uso do UVerify SDK e direto:
+
+        cert = CertificateData(hash=..., algorithm="SHA-256", metadata=payload)
+        request = BuildTransactionRequest(type="default", address=addr, certificates=[cert])
+        response = client.core.build_transaction(request)
+        witness = sign_tx(response.unsigned_transaction)
+        tx_hash = client.core.submit_transaction(response.unsigned_transaction, witness)
+
+    Sem necessidade de nenhum dos workarounds deste modulo, porque:
+
+    1. Carteiras separadas → cada empresa tem o seu proprio State Datum,
+       sem contencao de UTXOs entre emissoes.
+    2. Payloads unicos → cada produto tem um serial e data_hash diferente,
+       logo nunca ha colisao com credenciais anteriores.
+    3. Emissoes espacadas → na vida real as emissoes acontecem em
+       momentos diferentes (dias, semanas), dando tempo de sobra para
+       confirmacao on-chain entre cada uma.
+
+    Neste workshop usamos UMA unica carteira para os 4 atores e
+    re-executamos o mesmo codigo varias vezes, o que cria problemas
+    que nao existiriam em producao:
+
+    - RUN_ID: sufixo aleatorio para gerar data_hashes unicos por
+      execucao, evitando colisao com credenciais de runs anteriores.
+    - state_id: forcamos o backend a reutilizar um State Datum
+      especifico, em vez de depender da auto-selecao (que pode
+      falhar quando o UTXO mudou apos uma emissao anterior).
+    - _aguardar_confirmacao: esperamos a tx ser confirmada on-chain
+      antes de prosseguir, porque o proximo ator emite segundos
+      depois da mesma carteira.
+    - opt_out seletivo: so invalidamos o estado quando o erro e
+      genuinamente o Bug #54 ("/ by zero"), e nao em qualquer 500.
 """
 
 from __future__ import annotations
@@ -231,12 +269,18 @@ def _verificar_e_limpar_estado(
     client: UVerifyClient,
     address: str,
     sign_message: Callable[[str], DataSignature],
-) -> None:
-    """Verifica se a carteira tem estado obsoleto e tenta invalidar.
+) -> str | None:
+    """Verifica estado existente e retorna o state_id para reuso.
 
-    Bug #54 do UVerify: carteiras que emitiram certificados em uma era
-    anterior do Bootstrap ficam com um State Datum incompativel que causa
-    '/ by zero' no backend. A solucao e invalidar (opt_out) o estado.
+    Retorna o state_id encontrado para que a emissao possa forcar
+    o backend a reutilizar esse State Datum (evita criar um novo
+    UTXO e pagar minAda adicional). Se nao houver estado, retorna
+    None e o backend criara um automaticamente.
+
+    Apenas chama opt_out quando o erro contem "by zero" (Bug #54:
+    State Datum de era Bootstrap incompativel). Outros erros 500
+    sao tratados como transientes — retorna None e deixa o backend
+    decidir.
     """
     # O "estado" (State Datum) e uma estrutura on-chain que o smart
     # contract do UVerify usa para rastrear as emissoes da carteira.
@@ -252,13 +296,15 @@ def _verificar_e_limpar_estado(
                 f"  [estado] ✓ Estado valido encontrado "
                 f"(id={resp.state.id[:12]}..., countdown={resp.state.countdown})"
             )
+            return resp.state.id
         else:
             # Sem estado — sera criado automaticamente na primeira emissao
             # (custa ~2 ADA extras, que podem ser recuperados via opt_out).
             print("  [estado] ✓ Nenhum estado — sera criado na emissao.")
+            return None
     except UVerifyApiError as e:
         error_body = str(e.response_body).lower() if e.response_body else ""
-        if "by zero" in error_body or e.status_code == 500:
+        if "by zero" in error_body:
             # Bug #54 do UVerify: carteiras com State Datum de uma era
             # anterior do Bootstrap causam "/ by zero" no backend.
             # Solucao: invalidar o estado via opt_out e criar um novo.
@@ -272,10 +318,13 @@ def _verificar_e_limpar_estado(
                 time.sleep(15)
             except Exception as opt_err:
                 print(f"  [estado] AVISO: opt_out falhou ({opt_err}). Prosseguindo...")
+            return None
         else:
             print(f"  [estado] AVISO: Erro ao consultar estado ({e.status_code}). Prosseguindo...")
+            return None
     except Exception as e:
         print(f"  [estado] AVISO: Nao foi possivel verificar estado ({e}). Prosseguindo...")
+        return None
 
 
 def _emitir_com_tratamento(
@@ -284,11 +333,18 @@ def _emitir_com_tratamento(
     cert: CertificateData,
     sign_tx: Callable[[str], str],
     sign_message: Callable[[str], DataSignature],
+    state_id: str | None = None,
 ) -> str:
     """Emite certificado com tratamento de status codes da API.
 
     Verifica a resposta do build para COLLATERAL_REQUIRED e
     PENDING_TRANSACTION, tratando cada caso antes de prosseguir.
+
+    Args:
+        state_id: Se fornecido, forca o backend a reutilizar esse
+            State Datum em vez de selecionar automaticamente o mais
+            barato. Isso evita conflitos de UTXO ao emitir
+            credenciais sequencialmente da mesma carteira.
 
     Retorna:
         tx_hash da transacao submetida.
@@ -296,11 +352,19 @@ def _emitir_com_tratamento(
     # Montar o pedido de build. type="default" e o modo padrao do
     # UVerify para emissoes de certificados (outros tipos incluem
     # "bootstrap" e "update", usados internamente pelo smart contract).
-    request = BuildTransactionRequest(
+    # Quando state_id e fornecido, forcamos o backend a usar esse
+    # State Datum especifico (evita auto-selecao que pode falhar
+    # quando o UTXO mudou apos uma emissao anterior).
+    build_kwargs: dict = dict(
         type="default",
         address=address,
         certificates=[cert],
     )
+    if state_id is not None:
+        build_kwargs["state_id"] = state_id
+        print(f"  [build] Forcando state_id={state_id[:12]}...")
+
+    request = BuildTransactionRequest(**build_kwargs)
 
     # O build_transaction() pede ao UVerify para montar a tx CBOR
     # (com o smart contract Plutus V3 embutido). A resposta inclui:
@@ -315,6 +379,7 @@ def _emitir_com_tratamento(
         print("  Status: COLLATERAL_REQUIRED — preparando colateral...")
         _preparar_colateral(client, address, sign_tx)
         time.sleep(10)  # Aguardar confirmacao do colateral on-chain.
+        request = BuildTransactionRequest(**build_kwargs)
         response = client.core.build_transaction(request)
         status_msg = (response.status.message or "").upper() if response.status else ""
 
@@ -324,6 +389,7 @@ def _emitir_com_tratamento(
     if "PENDING" in status_msg:
         print("  Status: PENDING_TRANSACTION — aguardando tx anterior...")
         time.sleep(30)
+        request = BuildTransactionRequest(**build_kwargs)
         response = client.core.build_transaction(request)
 
     # Assinar a tx montada pelo UVerify e submeter a rede.
@@ -386,9 +452,9 @@ def emitir_via_sdk(
     addr_str = str(address)
 
     # ----------------------------------------------------------------
-    # Passo 5 — Verificar/limpar estado obsoleto (Bug #54).
+    # Passo 5 — Verificar estado e obter state_id para reuso.
     # ----------------------------------------------------------------
-    _verificar_e_limpar_estado(client, addr_str, sign_msg_cb)
+    state_id = _verificar_e_limpar_estado(client, addr_str, sign_msg_cb)
 
     # ----------------------------------------------------------------
     # Passo 6 — Garantir colateral para scripts Plutus V3.
@@ -408,8 +474,17 @@ def emitir_via_sdk(
     for attempt in range(1, MAX_ATTEMPTS + 1):
         try:
             tx_hash = _emitir_com_tratamento(
-                client, addr_str, cert, sign_tx_cb, sign_msg_cb
+                client, addr_str, cert, sign_tx_cb, sign_msg_cb,
+                state_id=state_id,
             )
+            # Aguardar confirmacao on-chain antes de retornar, para
+            # que o State Datum UTXO esteja settled quando o proximo
+            # ator tentar emitir da mesma carteira.
+            print("  Aguardando confirmacao on-chain antes de prosseguir...")
+            if _aguardar_confirmacao(client, tx_hash):
+                print("  ✓ Transacao confirmada on-chain.")
+            else:
+                print("  AVISO: Timeout aguardando confirmacao — prosseguindo.")
             return tx_hash, cert.hash
         except UVerifyApiError as e:
             # Carteira vazia — fatal, nao adianta retry. O usuario
@@ -455,6 +530,22 @@ def main() -> None:
             "ERRO: defina WALLET_MNEMONIC no .env (24 palavras, TESTNET ONLY)."
         )
 
+    # ── RUN_ID: garante data_hashes unicos por execucao ──
+    # Cada run completa (origem→celula→pack→reciclagem) usa o mesmo
+    # RUN_ID. Na primeira emissao de um run, geramos um ID aleatorio
+    # de 4 hex chars e salvamos no .env. Para iniciar um run novo,
+    # apague RUN_ID do .env ou defina um novo valor.
+    env_path = find_dotenv(usecwd=True) or ".env"
+    run_id = os.environ.get("RUN_ID", "").strip()
+    if not run_id:
+        import secrets
+        run_id = secrets.token_hex(2)  # 4 hex chars, e.g. "a3f1"
+        set_key(env_path, "RUN_ID", run_id, quote_mode="never")
+        os.environ["RUN_ID"] = run_id
+        print(f"Novo RUN_ID gerado: {run_id}")
+    else:
+        print(f"Usando RUN_ID existente: {run_id}")
+
     print(f"Emitindo DPP do Ator '{args.ator}' via UVerify SDK (preprod)...")
     print()
 
@@ -473,7 +564,6 @@ def main() -> None:
     print()
 
     # Auto-atualiza .env (sem aspas, no formato existente)
-    env_path = find_dotenv(usecwd=True) or ".env"
     atualizadas = [f"{proxima_chave}={tx_hash}"]
     set_key(env_path, proxima_chave, tx_hash, quote_mode="never")
     if args.ator == "pack":
