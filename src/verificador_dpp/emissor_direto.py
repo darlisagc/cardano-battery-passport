@@ -166,6 +166,18 @@ def main() -> None:
     if not project_id or project_id.startswith("preprodXXXX"):
         sys.exit("ERRO: defina BLOCKFROST_PROJECT_ID (preprod) no .env.")
 
+    # ── RUN_ID: garante data_hashes unicos por execucao ──
+    env_path = find_dotenv(usecwd=True) or ".env"
+    run_id = os.environ.get("RUN_ID", "").strip()
+    if not run_id:
+        import secrets
+        run_id = secrets.token_hex(2)  # 4 hex chars
+        set_key(env_path, "RUN_ID", run_id, quote_mode="never")
+        os.environ["RUN_ID"] = run_id
+        print(f"Novo RUN_ID gerado: {run_id}")
+    else:
+        print(f"Usando RUN_ID existente: {run_id}")
+
     print(f"Emitindo DPP do Ator '{args.ator}' DIRETO via PyCardano...")
     print()
 
@@ -185,7 +197,6 @@ def main() -> None:
     print()
 
     # Auto-atualiza .env (sem aspas, no formato existente)
-    env_path = find_dotenv(usecwd=True) or ".env"
     atualizadas = [f"{proxima_chave}={tx_hash}"]
     set_key(env_path, proxima_chave, tx_hash, quote_mode="never")
     if args.ator == "pack":

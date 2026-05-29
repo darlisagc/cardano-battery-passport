@@ -208,3 +208,58 @@ class TestCertificateDataConstruction:
         cert = call_args[0][2]  # 3rd positional arg is the CertificateData
         assert cert.metadata["uverify_update_policy"] == "restricted"
         assert cert.metadata["uverify_template_id"] == "digitalProductPassport"
+
+    @_PATCH_CONFIRMAR
+    @_PATCH_COLATERAL
+    @patch(
+        "verificador_dpp.emissor_sdk._verificar_e_limpar_estado",
+        return_value="test-state-id-123",
+    )
+    @patch("verificador_dpp.emissor_sdk.carregar_carteira")
+    @patch("verificador_dpp.emissor_sdk.UVerifyClient")
+    def test_state_id_forwarded_to_emitir(
+        self, mock_client_cls, mock_wallet, _estado, _col, _conf
+    ):
+        """When _verificar_e_limpar_estado finds a state, state_id is forwarded."""
+        from verificador_dpp.emissor_sdk import emitir_via_sdk
+
+        mock_skey = MagicMock()
+        mock_addr = MagicMock()
+        mock_wallet.return_value = (mock_skey, mock_addr)
+        mock_client = MagicMock()
+        mock_client_cls.return_value = mock_client
+
+        with _make_mock_emitir() as mock_emitir, patch.dict(
+            os.environ, {"UVERIFY_API_URL": ""}, clear=False
+        ):
+            emitir_via_sdk("origem", {}, "fake mnemonic words " * 3)
+
+        # Verify state_id="test-state-id-123" was passed to _emitir_com_tratamento
+        call_kwargs = mock_emitir.call_args[1]
+        assert call_kwargs["state_id"] == "test-state-id-123"
+
+    @_PATCH_CONFIRMAR
+    @_PATCH_COLATERAL
+    @_PATCH_ESTADO
+    @patch("verificador_dpp.emissor_sdk.carregar_carteira")
+    @patch("verificador_dpp.emissor_sdk.UVerifyClient")
+    def test_state_id_none_when_no_state(
+        self, mock_client_cls, mock_wallet, _estado, _col, _conf
+    ):
+        """When _verificar_e_limpar_estado returns None, state_id=None is forwarded."""
+        from verificador_dpp.emissor_sdk import emitir_via_sdk
+
+        mock_skey = MagicMock()
+        mock_addr = MagicMock()
+        mock_wallet.return_value = (mock_skey, mock_addr)
+        mock_client = MagicMock()
+        mock_client_cls.return_value = mock_client
+
+        with _make_mock_emitir() as mock_emitir, patch.dict(
+            os.environ, {"UVERIFY_API_URL": ""}, clear=False
+        ):
+            emitir_via_sdk("origem", {}, "fake mnemonic words " * 3)
+
+        # _PATCH_ESTADO returns None, so state_id=None should be passed
+        call_kwargs = mock_emitir.call_args[1]
+        assert call_kwargs["state_id"] is None

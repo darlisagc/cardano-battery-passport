@@ -614,7 +614,8 @@ sign_tx_cb = fazer_callback_assinatura(payment_skey)
 sign_msg_cb = fazer_callback_mensagem(payment_skey)
 
 # 3. Verificar/limpar estado obsoleto (Bug #54 do UVerify)
-_verificar_e_limpar_estado(client, address, sign_msg_cb)
+#    Retorna state_id para reuso (evita criar novo State Datum).
+state_id = _verificar_e_limpar_estado(client, address, sign_msg_cb)
 
 # 4. Garantir colateral para scripts Plutus V3
 _preparar_colateral(client, address, sign_tx_cb)
@@ -624,8 +625,11 @@ for attempt in range(1, 6):
     try:
         # Monta tx via API, trata status codes, assina e submete.
         tx_hash = _emitir_com_tratamento(
-            client, address, cert, sign_tx_cb, sign_msg_cb
+            client, address, cert, sign_tx_cb, sign_msg_cb,
+            state_id=state_id,
         )
+        # Aguardar confirmacao on-chain antes de prosseguir.
+        _aguardar_confirmacao(client, tx_hash)
         break
     except UVerifyApiError as e:
         if "no utxos found" in str(e).lower():
@@ -654,7 +658,7 @@ uv run python -m verificador_dpp.emissor_sdk --ator reciclagem
 
 💡 **Relatório HTML.** Igual à Opção A — após cada emissão, um recibo HTML é gerado e aberto automaticamente no navegador.
 
-💡 **Intervalo entre emissões.** Cada transação Cardano precisa de ~20-40s para confirmar na preprod. Se você rodar dois emissores em sequência rápida, o segundo pode falhar com `PENDING_TRANSACTION` ou `BadInputs` (porque o UTXO da tx anterior ainda não foi confirmado). O retry automático com backoff geralmente resolve isso, mas aguardar ~30s entre comandos evita delays desnecessários.
+💡 **Intervalo entre emissões.** O `emissor_sdk` agora aguarda automaticamente a confirmação on-chain antes de retornar (`_aguardar_confirmacao`), então você pode rodar os atores em sequência sem esperas manuais. Se por algum motivo a confirmação expirar (timeout de 60s), o retry com backoff trata erros transientes como `PENDING_TRANSACTION` ou `BadInputs`.
 
 ### 2.5 Opção C — Emissão via UI UVerify (sem código)
 
@@ -802,9 +806,9 @@ A credencial do Ator 4 já foi emitida na Seção 2 quando você rodou `--ator r
 ```json
 {
     "uverify_template_id": "digitalProductPassport",
-    "name": "Reciclagem Pack 75kWh - SR-2031-08-001",
+    "name": "Reciclagem Pack 75kWh - SR-2031-09-{suffix}",
     "issuer": "RecicLar Sorocaba S.A.",
-    "gtin": "7891234560044",
+    "gtin": "7891234560129",
     ...
     "ref_pack_tx":   ATOR3_TX,        # tx hash do pack
     "ref_pack_data_hash":       sha256(gtin+serial do Ator 3),

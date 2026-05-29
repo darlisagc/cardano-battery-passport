@@ -38,6 +38,15 @@ ALL_PAYLOADS = [
     ("reciclagem", lambda: payload_reciclagem(FAKE_ENV)),
 ]
 
+# Same payloads but with RUN_ID set — for 64-byte limit tests.
+FAKE_ENV_WITH_RUN_ID = {**FAKE_ENV, "RUN_ID": "ffff"}
+ALL_PAYLOADS_WITH_RUN_ID = [
+    ("origem", lambda: payload_origem(FAKE_ENV_WITH_RUN_ID)),
+    ("celula", lambda: payload_celula(FAKE_ENV_WITH_RUN_ID)),
+    ("pack", lambda: payload_pack(FAKE_ENV_WITH_RUN_ID)),
+    ("reciclagem", lambda: payload_reciclagem(FAKE_ENV_WITH_RUN_ID)),
+]
+
 
 # ── data_hash and _hash_serial ─────────────────────────────────────
 
@@ -82,6 +91,24 @@ class TestStudentId:
         sid = _student_id({"WALLET_MNEMONIC": "anything"})
         assert len(sid) == 6
         assert all(c in "0123456789abcdef" for c in sid)
+
+    def test_with_run_id(self):
+        env = {"WALLET_MNEMONIC": _TEST_MNEMONIC, "RUN_ID": "a3f1"}
+        sid = _student_id(env)
+        assert sid == f"{_TEST_SID}-a3f1"
+
+    def test_with_empty_run_id(self):
+        env = {"WALLET_MNEMONIC": _TEST_MNEMONIC, "RUN_ID": ""}
+        assert _student_id(env) == _TEST_SID
+
+    def test_with_whitespace_run_id(self):
+        env = {"WALLET_MNEMONIC": _TEST_MNEMONIC, "RUN_ID": "   "}
+        assert _student_id(env) == _TEST_SID
+
+    def test_long_run_id_truncated(self):
+        env = {"WALLET_MNEMONIC": _TEST_MNEMONIC, "RUN_ID": "abcdef1234"}
+        sid = _student_id(env)
+        assert sid == f"{_TEST_SID}-abcd"  # truncated to 4 chars
 
 
 # ── Common payload structure ────────────────────────────────────────
@@ -147,6 +174,16 @@ class TestPayloadStructure:
     def test_template_id_is_correct(self, name, fn):
         payload, _, _ = fn()
         assert payload["uverify_template_id"] == "digitalProductPassport"
+
+    @pytest.mark.parametrize("name,fn", ALL_PAYLOADS_WITH_RUN_ID)
+    def test_no_value_exceeds_64_bytes_with_run_id(self, name, fn):
+        """64-byte limit must hold even when RUN_ID is set."""
+        payload, _, _ = fn()
+        for key, val in payload.items():
+            assert len(val.encode("utf-8")) <= 64, (
+                f"Payload '{name}': field '{key}' value is "
+                f"{len(val.encode('utf-8'))} bytes (max 64)"
+            )
 
 
 # ── uverify_update_policy (new field) ──────────────────────────────

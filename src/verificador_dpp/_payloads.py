@@ -61,6 +61,7 @@ def _student_id(env: dict[str, str] | None) -> str:
     """
     mnemonic = (env or {}).get("WALLET_MNEMONIC", "").strip()
     run_id = (env or {}).get("RUN_ID", "").strip()
+    run_id = run_id[:4]  # cap at 4 chars to stay within 64-byte metadata limit
     if not mnemonic:
         return "000000"
     base = sha256(mnemonic.encode("utf-8")).hexdigest()[:6]
