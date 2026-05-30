@@ -15,7 +15,7 @@ Os quatro atores da cadeia de suprimentos sao:
 
 Cada ator **emite** uma credencial contendo dados do produto (GTIN, origem, pegada de carbono, composicao de materiais) e uma referencia (`ref_*_tx`) apontando para a transacao do ator anterior. O **verificador** percorre essa cadeia de tras para frente — da credencial do pack (ou reciclagem) ate a origem do litio — para reconstruir e validar o passaporte completo.
 
-> **Nota sobre carteiras:** Em producao, **cada ator teria sua propria carteira** (chave privada independente), garantindo que somente a empresa responsavel possa assinar credenciais em seu nome. Neste workshop, por simplicidade, **todos os atores compartilham a mesma carteira** (mesmo mnemonico no `.env`). Isso permite focar no encadeamento e na verificacao sem a complexidade de gerenciar multiplas carteiras.
+> **Nota sobre carteiras:** Em producao, **cada ator teria sua propria carteira** (chave privada independente), garantindo que somente a empresa responsavel possa assinar credenciais em seu nome. Neste workshop, por simplicidade, **todos os atores compartilham a mesma carteira** (mesmo mnemonico no `.env`). Isso permite focar no encadeamento e na verificacao sem a complexidade de gerenciar multiplas carteiras. Para viabilizar emissoes sequenciais de uma unica carteira, o codigo inclui `RUN_ID` (data_hashes unicos por execucao), `state_id` pinning, espera de confirmacao on-chain e retentativas com backoff.
 
 > **Rede:** tudo roda na **testnet preprod do Cardano** — Blockfrost preprod, faucet de tADA, Cexplorer preprod, API UVerify preprod. Nenhum ADA real e utilizado.
 
