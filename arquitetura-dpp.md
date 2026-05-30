@@ -215,7 +215,9 @@ flowchart TB
 
 - **Opcao A** e ideal se voce quer **total independencia**: seus dados ficam
   inteiramente na blockchain, sem depender de nenhum servidor externo para
-  leitura. Porem, os dados ficam publicos e o tamanho da transacao e maior.
+  leitura. Porem, os dados ficam publicos, imutaveis e o tamanho da transacao
+  e maior. **Atencao GDPR:** dados gravados on-chain nao podem ser apagados
+  — evite incluir dados pessoais identificaveis (PII) nesta opcao.
 - **Opcao B** e ideal para **integracao programatica** com privacidade: o SDK
   cuida da complexidade do smart contract, e o payload completo fica off-chain
   (voce controla quem acessa).
