@@ -782,7 +782,9 @@ De Jequitinhonha a Europa: o Passaporte da Bateria
 
 🎯 **Insight:** o relatório final não distingue qual ator foi emitido por qual canal. Esse é o ponto — **a cadeia on-chain é a única fonte de verdade**, independente de como cada credencial chegou lá.
 
-### 3.3 Atalho — verificação ad-hoc via URL UVerify (sem código)
+### 3.3 Atalho — verificação ad-hoc via URL UVerify (sem código, apenas Opções B/C)
+
+⚠️ **Apenas para credenciais emitidas via UVerify (Opções B ou C).** Credenciais emitidas pelo `emissor_direto` (Opção A) usam metadata nativa Cardano e não estão indexadas pelo UVerify — use o `verificador.py` para verificá-las.
 
 Para inspecionar **uma** credencial individual sem rodar código (útil para demos ou para o consumidor final que escaneia um QR code):
 
