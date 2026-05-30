@@ -572,15 +572,18 @@ pedir uma copia.
 
 2. **CellTech** (fabricante de celulas) vai ao cartorio e registra: "Fabricamos
    celulas de bateria usando o litio do lote tal. Aqui esta o **numero de
-   protocolo do registro da MineraLitio** como prova."
+   protocolo do registro da MineraLitio** (`ref_origem_tx`) como prova."
+   O cartorio devolve um **numero de protocolo** (TX hash).
 
 3. **PackMontadora** (montadora) vai ao cartorio e registra: "Montamos um pack
    de bateria usando as celulas do lote tal. Aqui esta o **numero de protocolo
-   do registro da CellTech** como prova."
+   do registro da CellTech** (`ref_celula_tx`) como prova."
+   O cartorio devolve um **numero de protocolo** (TX hash).
 
 4. **RecicLar** (recicladora) vai ao cartorio e registra: "Reciclamos este pack.
-   Aqui estao os **numeros de protocolo de TODOS os registros anteriores** como
-   prova de rastreabilidade completa."
+   Aqui estao os **numeros de protocolo de TODOS os registros anteriores**
+   (`ref_origem_tx`, `ref_celula_tx`, `ref_pack_tx`) como prova de
+   rastreabilidade completa." O cartorio devolve um **numero de protocolo** (TX hash).
 
 ### Os dois metodos de registro
 
