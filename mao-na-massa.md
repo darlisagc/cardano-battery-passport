@@ -872,95 +872,149 @@ A cadeia forma um grafo acíclico verificável por **qualquer parte** — a reci
 
 ## Seção 5 — Troubleshooting
 
-### 5.1 "Faucet lento / tADA não chegou"
+Guia rápido de erros comuns, organizado por categoria. Se o seu problema não estiver aqui, confira a [documentação do UVerify](https://docs.uverify.io) ou abra uma issue no repositório.
 
-- Normal levar 1--3 min.  
-- Se \> 5 min: confirme rede da carteira \= preprod (não mainnet, não preview).  
-- Peça tADA ao instrutor.
+---
 
-### 5.2 "Carteira não sincroniza"
+### Carteira e faucet
 
-- Eternl: *Settings → Network → Re-sync*.  
-- Lace: alternar `Mainnet → Preprod` força ressync.  
-- Último recurso: reimportar a seed em nova extensão.
+#### 5.1 Faucet lento / tADA não chegou
 
-### 5.3 "Network mismatch" / 403 Forbidden no PyCardano
+| Sintoma | Ação |
+|---------|------|
+| tADA não aparece após 1-3 min | Normal — aguarde até 3 min |
+| tADA não aparece após 5 min | Confirme que a carteira está em **preprod** (não mainnet, não preview) |
+| Faucet indisponível | Peça tADA ao instrutor |
 
-Erro típico do `blockfrost-python`: `ApiError: 403 ... project does not match network`.
+#### 5.2 Carteira não sincroniza
 
-- Blockfrost project deve ser **preprod** (project ID começa com `preprod`).  
-- O projeto usa `ApiUrls.preprod.value` (`https://cardano-preprod.blockfrost.io/api/v0`). Não troque para `ApiUrls.mainnet` ou `ApiUrls.preview`. *(Nota: `cliente_blockfrost.py` foi removido; a configuração Blockfrost agora é feita diretamente nos módulos `emissor_direto.py` e `verificador.py`.)*  
-- Nunca misture um project ID `mainnet` com transações preprod — vai falhar silenciosamente em alguns endpoints.
+| Carteira | Ação |
+|----------|------|
+| Eternl | *Settings → Network → Re-sync* |
+| Lace | Alternar `Mainnet → Preprod` força ressync |
+| Ambas | Último recurso: reimportar a seed em nova extensão |
 
-### 5.4 Rate limit Blockfrost (plano free)
+---
 
-- Free: 10 req/s, 100k req/dia.  
-- Se aparecer HTTP 429: espere 60 s, reduza paralelismo.  
-- Para o verificador (3 chamadas sequenciais) nunca estoura.
+### Blockfrost
 
-### 5.5 "Credencial UVerify não aparece na verificação"
+#### 5.3 `ApiError: 403 ... project does not match network`
 
-- Aguarde **1 bloco** (\~20 s em preprod).  
-- Confira o tx hash em `https://preprod.cexplorer.io/tx/<hash>` — se o Cexplorer não achou, o Blockfrost também não acha.  
-- O endpoint `GET /verify/{data-hash}` do UVerify usa o **data hash** (sha256(gtin+serial)), não o tx hash. 
+O project ID do Blockfrost não corresponde à rede usada.
 
-### 5.6 "ParserCredencial não encontra `uverify_template_id`"
+| Checklist | |
+|-----------|--|
+| Project ID começa com `preprod`? | Se não, crie um novo projeto preprod em [blockfrost.io](https://blockfrost.io) |
+| Código usa `ApiUrls.preprod.value`? | Não troque para `ApiUrls.mainnet` ou `ApiUrls.preview` |
+| Misturando project ID mainnet com txs preprod? | Vai falhar silenciosamente — use project ID preprod |
 
-- A transação que você passou não tem metadados UVerify.  
-- Confirme que copiou o tx hash certo (não o bloco, não o data hash).  
-- Cheque no Cexplorer a aba *Metadata* — o campo deve estar lá literal.
+#### 5.4 Rate limit Blockfrost (HTTP 429)
 
-### 5.7 `pycardano` não instala / erro de build de dependência
+| Plano | Limite | Ação |
+|-------|--------|------|
+| Free | 10 req/s, 100k req/dia | Espere 60s, reduza paralelismo |
+| Workshop | O verificador faz ~3-5 chamadas sequenciais | Nunca estoura o limite |
 
-- O `pycardano` traz dependências nativas (criptografia). Em macOS/Linux geralmente "só funciona"; em Windows pode pedir o [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/).  
-- Garanta Python **3.11+** (`python3 --version`). 3.10 e abaixo não são suportados pelas versões recentes do `pycardano`.  
-- Se `uv sync` falhar com erro de timeout, rode `uv self update` e repita.
+---
 
-### 5.8 `ImportError: cannot import name 'CBORDecodeValueError' from 'cbor2'`
+### Emissão — Opção A (emissor direto)
 
-Ocorre quando o `cbor2pure` (dep transitiva do `pycardano`) puxa uma versão recente demais do `cbor2`. O `pyproject.toml` já trava `cbor2<6` para evitar isso. Se mesmo assim aparecer, force a versão:
+#### 5.5 `InsufficientUTxOBalance`
 
-```shell
-uv add "cbor2<6" --upgrade
-```
+Carteira sem tADA. Volte ao faucet (Seção 0.3).
 
-### 5.9 Erros específicos da Opção B (UVerify SDK)
+#### 5.6 `TransactionFailed: BadInputs`
 
-- `UVerifyValidationError: A sign_tx callback is required` — esqueceu de passar `sign_tx=...` para `issue_certificates` (ou para o construtor do `UVerifyClient`).
-- `UVerifyApiError 400` — payload inválido. Confira que **todos** os valores de `metadata` são strings, e que `uverify_template_id` está exato.
-- `UVerifyApiError 403` — endereço sem tADA na rede preprod. Volte ao faucet (Seção 0.3).
-- **Endereço derivado "errado" / não bate com Eternl** — confira que o Eternl está em **preprod**, não preview, não mainnet. As três redes derivam endereços diferentes a partir do mesmo seed.
-- **`UVerifyApiError 500` / `"/ by zero"`** — a carteira tem um State Datum obsoleto de uma era anterior do Bootstrap (Bug #54 do UVerify preprod). O `emissor_sdk` detecta isso automaticamente e tenta invalidar via `opt_out()`. Se persistir, crie uma carteira nova no faucet.
-- **`COLLATERAL_REQUIRED`** — a API do UVerify retornou que a carteira não tem colateral suficiente para executar o smart contract Plutus V3. O `emissor_sdk` prepara isso automaticamente chamando `prepare-collateral`. Se falhar, verifique que a carteira tem pelo menos 10 ADA livres (5 para colateral + 5 para o State Datum).
-- **`PENDING_TRANSACTION`** — a transação anterior ainda não confirmou na rede. O `emissor_sdk` aguarda 30s e retenta. Para evitar, aguarde ~30s entre emissões de atores diferentes.
-- **`no utxos found`** — carteira sem saldo. Volte ao faucet (Seção 0.3) e peça mais tADA.
-- **Emissão falha após 5 tentativas** — indica problema persistente na API. Verifique em https://preprod.cexplorer.io/ se a rede está processando blocos. Se a API do UVerify estiver instável, use a Opção A (`emissor_direto`) como alternativa — os resultados são equivalentes para o verificador.
+Você acabou de submeter uma tx e está tentando outra antes do bloco confirmar. Espere ~20-40s.
 
-### 5.10 Erros específicos da Opção A (emissor direto)
+#### 5.7 Metadata recusada com erro de tamanho
 
-- `InsufficientUTxOBalance` — carteira sem tADA. Faucet.  
-- `TransactionFailed: BadInputs` — você acabou de submeter uma tx e está tentando outra antes do bloco confirmar. Espere \~20-40s.  
-- **Metadata recusada com erro de tamanho** — algum valor do payload tem mais de 64 bytes (limite Cardano). Os payloads do workshop já estão dimensionados; se você customizar, mantenha cada string ≤ 64 chars ou divida em lista de strings.
+Algum valor do payload tem mais de 64 bytes (limite Cardano para strings em metadata). Os payloads do workshop já estão dimensionados; se você customizar, mantenha cada string ≤ 64 chars ou divida em lista de strings.
 
-### 5.11 `RecursionError` ao verificar credenciais UVerify
+---
+
+### Emissão — Opção B (UVerify SDK)
+
+#### 5.8 Erros de autenticação e payload
+
+| Erro | Causa | Solução |
+|------|-------|---------|
+| `UVerifyValidationError: A sign_tx callback is required` | Callback de assinatura não foi passada | Passe `sign_tx=...` para `issue_certificates` ou para o construtor do `UVerifyClient` |
+| `UVerifyApiError 400` | Payload inválido | Confira que **todos** os valores de `metadata` são strings e que `uverify_template_id` está exato |
+| `UVerifyApiError 403` | Carteira sem tADA em preprod | Volte ao faucet (Seção 0.3) |
+| Endereço derivado não bate com Eternl | Rede errada na carteira | Confirme que o Eternl está em **preprod** (não preview, não mainnet) — cada rede deriva endereços diferentes do mesmo seed |
+
+#### 5.9 Erros de estado e infraestrutura on-chain
+
+| Erro | Causa | Solução |
+|------|-------|---------|
+| `UVerifyApiError 500` / `"/ by zero"` | State Datum obsoleto (Bug #54 do UVerify preprod) | O `emissor_sdk` detecta e invalida via `opt_out()` automaticamente. Se persistir, crie uma carteira nova no faucet |
+| `COLLATERAL_REQUIRED` | Carteira sem UTXO de colateral (>=5 ADA) para Plutus V3 | O `emissor_sdk` prepara automaticamente via `prepare-collateral`. Se falhar, verifique que a carteira tem pelo menos 10 ADA livres (5 colateral + 5 State Datum) |
+| `PENDING_TRANSACTION` | Transação anterior ainda não confirmou na rede | O `emissor_sdk` aguarda 30s e retenta automaticamente |
+| `no utxos found` | Carteira sem saldo | Volte ao faucet (Seção 0.3) e peça mais tADA |
+| Emissão falha após 5 tentativas | Problema persistente na API | Verifique em [preprod.cexplorer.io](https://preprod.cexplorer.io/) se a rede está processando blocos. Se a API do UVerify estiver instável, use a Opção A (`emissor_direto`) como alternativa — os resultados são equivalentes para o verificador |
+
+---
+
+### Verificação
+
+#### 5.10 Credencial UVerify não aparece na verificação
+
+| Checklist | |
+|-----------|--|
+| Aguardou pelo menos 1 bloco (~20-40s em preprod)? | Se acabou de emitir, espere e tente novamente |
+| Tx hash existe no Cexplorer? | Confira em `https://preprod.cexplorer.io/tx/<hash>` — se o Cexplorer não achou, o Blockfrost também não acha |
+| Está usando o `data_hash`, não o `tx_hash`? | O endpoint `GET /verify/{data_hash}` do UVerify usa o **data hash** (`sha256(gtin+serial)`), não o tx hash |
+
+#### 5.11 `ParserCredencial` não encontra `uverify_template_id`
+
+A transação não tem metadados no formato UVerify.
+
+- Confirme que copiou o **tx hash** certo (não o bloco, não o data hash).
+- Cheque no Cexplorer a aba *Metadata* — o campo `uverify_template_id` deve estar presente.
+
+#### 5.12 `RecursionError: maximum recursion depth exceeded`
 
 ```
 RecursionError: maximum recursion depth exceeded
 ```
 
-Ocorre quando o verificador tenta parsear a resposta JSON da API UVerify usando o SDK Python (`verify_by_transaction`). A resposta inclui um campo `stateDatum` profundamente aninhado (centenas de níveis de histórico do smart contract), que excede o limite de recursão do CPython. Analogia: é como um documento com centenas de "seções dentro de seções" que o Python não consegue ler de uma vez.
+**Causa:** a resposta JSON da API UVerify inclui o campo `stateDatum` profundamente aninhado (centenas de níveis de histórico do smart contract), que excede o limite de recursão do CPython ao usar `verify_by_transaction()` do SDK.
 
-**Solução:** o `verificador.py` já contorna isso fazendo uma chamada HTTP direta à API (`/api/v1/verify/{data_hash}`) em vez de usar o SDK — lê apenas os campos necessários sem precisar processar a estrutura inteira. Se você estiver escrevendo código customizado, evite usar `verify_by_transaction()` do SDK e use a abordagem HTTP direta.
+**Solução:** o `verificador.py` já contorna isso fazendo uma chamada HTTP direta à API (`GET /api/v1/verify/{data_hash}`) em vez de usar o SDK — lê apenas os campos necessários sem processar a estrutura inteira. Se você estiver escrevendo código customizado, evite `verify_by_transaction()` e use a abordagem HTTP direta.
 
-### 5.12 Verificador retorna 404 para credencial emitida via UVerify (SDK ou UI)
+#### 5.13 `UVerifyApiError: UVerify API error 404` na verificação
 
 ```
 UVerifyApiError: UVerify API error 404
 ```
 
-Significa que o verificador não encontrou a credencial na API do UVerify. Causas mais comuns:
+O verificador não encontrou a credencial na API do UVerify. Causas mais comuns:
 
-- **`data_hash` errado** — a API do UVerify busca por `data_hash` (= `sha256(gtin + serial)`), não pelo tx hash. Se o `data_hash` usado na busca não corresponde ao que foi usado na emissão, retorna 404.
-- **Credencial emitida pela UI** — quando emitida pela UI do UVerify, o `data_hash` pode diferir do calculado por `sha256(gtin + serial)` se os campos foram preenchidos com valores ligeiramente diferentes (espaços, acentos, etc). Verifique a URL de verificação na tela de sucesso do UVerify (formato: `https://app.preprod.uverify.io/verify/<data_hash>/<index>?serial=<serial>`).
-- **Campos `ref_*_data_hash` ausentes nos payloads** — em cadeias mistas (A + B/C), cada credencial precisa carregar o `ref_*_data_hash` do ator que referencia. Sem esse hint, o verificador tenta extrair o hash do redeemer on-chain (mais lento) ou do inline datum (menos confiável). Confira que `_payloads.py` inclui esses campos.
-- **Blockfrost ainda não indexou** — após emissão, aguarde pelo menos 1 bloco (~20-40s em preprod) antes de verificar. Se acabou de emitir e recebe 404, espere e tente novamente. 
+| Causa | Solução |
+|-------|---------|
+| **`data_hash` errado** | A API busca por `data_hash` (`sha256(gtin+serial)`), não pelo tx hash. Verifique se o hash usado na busca corresponde ao da emissão |
+| **Credencial emitida pela UI** | O `data_hash` pode diferir se os campos foram preenchidos com valores ligeiramente diferentes (espaços, acentos). Verifique a URL na tela de sucesso do UVerify |
+| **Campos `ref_*_data_hash` ausentes** | Em cadeias mistas (A+B/C), cada credencial precisa do `ref_*_data_hash` do ator referenciado. Sem esse hint, o verificador tenta o redeemer on-chain (mais lento) ou inline datum (menos confiável). Confira que `_payloads.py` inclui esses campos |
+| **Blockfrost ainda não indexou** | Aguarde pelo menos 1 bloco (~20-40s em preprod) antes de verificar |
+
+---
+
+### Dependências Python
+
+#### 5.14 `pycardano` não instala / erro de build
+
+| Sistema | Ação |
+|---------|------|
+| macOS / Linux | Geralmente funciona direto |
+| Windows | Pode pedir o [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) |
+| Python < 3.11 | Não suportado pelas versões recentes do `pycardano`. Use Python **3.11+** (`python3 --version`) |
+| Timeout no `uv sync` | Rode `uv self update` e repita |
+
+#### 5.15 `ImportError: cannot import name 'CBORDecodeValueError' from 'cbor2'`
+
+O `cbor2pure` (dependência transitiva do `pycardano`) puxa uma versão incompatível do `cbor2`. O `pyproject.toml` já trava `cbor2<6` para evitar isso. Se mesmo assim aparecer:
+
+```shell
+uv add "cbor2<6" --upgrade
+```
