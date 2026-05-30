@@ -259,13 +259,7 @@ cp .env.example .env     # vamos preencher na proxima secao
 
 O `uv sync` é **idempotente**: pode rodar quantas vezes quiser — só instala o que falta. Confere automaticamente que você tem Python 3.11+ e cria o `.venv` para você.
 
-Você **não precisa** ativar o virtualenv. Use `uv run <comando>` em qualquer subdiretório do projeto e o uv resolve o ambiente:
-
-```shell
-uv run python -m verificador_dpp.emissor_direto --ator origem
-```
-
-(Se preferir o fluxo clássico, `source .venv/bin/activate` continua funcionando.)
+Você **não precisa** ativar o virtualenv. Use `uv run <comando>` em qualquer subdiretório do projeto e o uv resolve o ambiente. Se preferir o fluxo clássico, `source .venv/bin/activate` continua funcionando.
 
 ## Seção 1 — Entendendo o template DPP do UVerify
 
