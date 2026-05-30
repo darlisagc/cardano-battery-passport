@@ -320,6 +320,8 @@ ref_celula_tx  → tx hash da credencial de célula (Ator 2)
 ref_pack_tx    → tx hash da credencial de pack (Ator 3)
 ```
 
+Cada ator referencia apenas o anterior (célula → origem, pack → célula), mas a **reciclagem** (Ator 4) referencia **todas** as anteriores (pack + célula + origem), pois precisa rastrear a cadeia completa para o relatório de materiais recuperados.
+
 Além do tx hash, cada referência inclui um **hint de `data_hash`** — necessário para que o verificador consiga buscar credenciais emitidas via UVerify (Opções B/C) na API:
 
 ```
