@@ -487,6 +487,8 @@ context.submit_tx(signed_tx)
 ```shell
 uv run python -m verificador_dpp.emissor_direto --ator origem
 uv run python -m verificador_dpp.emissor_direto --ator celula
+uv run python -m verificador_dpp.emissor_direto --ator pack
+uv run python -m verificador_dpp.emissor_direto --ator reciclagem
 ```
 
 💡 **`.env` atualizado automaticamente.** Após cada emissão, o script grava o `tx_hash` e `data_hash` direto no `.env` — você não precisa copiar/colar entre os comandos. A última linha do output mostra exatamente quais chaves foram escritas (`ATOR1_TX=…`, `TX_HASH_PACK=…`, etc.).
