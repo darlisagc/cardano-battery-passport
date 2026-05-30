@@ -292,6 +292,7 @@ caminhos**, como um menu de restaurante com prato principal e alternativa:
    consultar a API do UVerify para obter o payload completo.
 
 ```mermaid
+%%{init: {'theme': 'default', 'themeVariables': {'noteBkgColor': '#ffffff', 'noteBorderColor': '#cccccc'}}}%%
 sequenceDiagram
     participant V as Verificador
     participant BF as Blockfrost
