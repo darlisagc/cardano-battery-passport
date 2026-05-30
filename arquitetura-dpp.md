@@ -600,14 +600,17 @@ pedir uma copia.
 ### O auditor
 
 Um **auditor** (o verificador) quer montar o Passaporte completo de uma bateria.
-Ele tem em maos apenas o numero de protocolo do ultimo registro (o Pack). Entao:
+Ele tem em maos apenas o numero de protocolo do ultimo registro (o Pack ou a
+Reciclagem). Entao:
 
-1. Vai ao cartorio e pede o registro do Pack.
-2. Le o registro e encontra: "celulas vieram de CellTech, protocolo tal."
-3. Vai ao cartorio e pede o registro de CellTech.
-4. Le o registro e encontra: "litio veio de MineraLitio, protocolo tal."
-5. Vai ao cartorio e pede o registro de MineraLitio.
-6. Agora tem todos os documentos e monta o relatorio completo.
+1. Vai ao cartorio e pede o registro da Reciclagem.
+2. Le o registro e encontra: "pack veio de PackMontadora, protocolo tal."
+3. Vai ao cartorio e pede o registro do Pack.
+4. Le o registro e encontra: "celulas vieram de CellTech, protocolo tal."
+5. Vai ao cartorio e pede o registro de CellTech.
+6. Le o registro e encontra: "litio veio de MineraLitio, protocolo tal."
+7. Vai ao cartorio e pede o registro de MineraLitio.
+8. Agora tem todos os documentos e monta o relatorio completo.
 
 Em cada passo, se o documento estava no **Metodo A**, ele le direto no cartorio.
 Se estava no **Metodo B/C**, ele anota o numero do cofre e vai ao escritorio
