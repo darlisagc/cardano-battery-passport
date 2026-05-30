@@ -632,7 +632,7 @@ via APIs.**
 | **Redeemer** | Estrutura de dados enviada junto com uma transacao para interagir com um smart contract. No nosso sistema, contem o data_hash do certificado. Pense nele como o "argumento" que voce passa ao funcionario-robo. |
 | **Inline datum** | Dados armazenados diretamente na saida de uma transacao (ao inves de apenas seu hash). No nosso sistema, o smart contract UVerify armazena seu estado interno aqui. |
 | **CBOR** | Formato binario compacto (Concise Binary Object Representation) usado pela Cardano para serializar dados on-chain. Similar ao JSON, mas em binario. |
-| **UTxO** | Unspent Transaction Output — modelo contabil da Cardano. Cada transacao consome UTxOs anteriores e cria novos. Para este projeto, o relevante e que dados do smart contract ficam em UTxOs. |
+| **UTxO** | Unspent Transaction Output — modelo contabil da Cardano. Cada transacao consome UTxOs anteriores e cria novos. Cardano usa o modelo **eUTxO** (extended UTxO), que permite anexar dados (datums) e scripts (validators) aos UTxOs — e isso que viabiliza os smart contracts das Opcoes B/C. |
 | **data_hash** | Impressao digital SHA-256 calculada a partir de `gtin + serial`. Serve como chave unica para buscar o certificado completo no UVerify. |
 | **SHA-256** | Algoritmo de hash criptografico que gera uma sequencia fixa de 32 bytes (256 bits) a partir de qualquer entrada. Mudar um unico caractere na entrada produz um hash completamente diferente. |
 | **Blockfrost** | Servico SaaS que fornece uma API REST para ler dados da blockchain Cardano sem precisar rodar um no completo. |
