@@ -208,7 +208,6 @@ flowchart TB
 | **Onde fica o payload** | Direto na metadata da tx (on-chain) | Servidor UVerify (off-chain) | Servidor UVerify (off-chain) |
 | **Assinatura** | PyCardano `build_and_sign()` | Callback `sign_tx` via SDK | Wallet no navegador |
 | **Dependencia externa** | Apenas Blockfrost | Blockfrost + UVerify SDK | UVerify Web |
-| **Precisa de internet alem da blockchain?** | Nao (dados on-chain) | Sim (payload no servidor UVerify) | Sim (payload no servidor UVerify) |
 | **Dados ficam publicos on-chain?** | Sim (payload inteiro + `data_hash` visiveis) | Nao (apenas hash on-chain) | Nao (apenas hash on-chain) |
 | **Complexidade de codigo** | Media (construir tx manualmente) | Baixa (SDK abstrai a complexidade) | Nenhuma (interface visual) |
 
