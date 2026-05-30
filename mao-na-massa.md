@@ -533,15 +533,15 @@ O `emissor_sdk.py` implementa um fluxo com 5 camadas que lidam automaticamente c
 
 **As 5 camadas explicadas:**
 
-1. **Verificação de estado** — Antes de emitir, checa se a carteira tem um State Datum obsoleto (de uma era anterior do Bootstrap). Se detectar, invalida via `opt_out()`. Analogia: como verificar se seu "cadastro no cartório" está atualizado antes de tentar registrar um documento.
+1. **Verificação de estado** — Antes de emitir, o emissor consulta `get_user_info()` para verificar se a carteira já tem um **State Datum** on-chain (derivado do **Bootstrap Datum** global da plataforma). Se existir e for válido, o `state_id` é reutilizado na emissão (custo menor). Se o State Datum estiver obsoleto — de uma era anterior do Bootstrap, causando erro "/ by zero" (Bug #54) — o emissor invalida via `opt_out()` e um novo será criado na emissão. Na primeira emissão de uma carteira nova, não há State Datum; o UVerify cria um automaticamente (~2 ADA, reembolsáveis via `opt_out`). Analogia: como verificar se seu "cadastro no cartório" está atualizado antes de tentar registrar um documento — se estiver expirado, cancela e abre um novo.
 
-2. **Preparação de colateral** — Smart contracts Plutus V3 exigem que a carteira tenha um UTXO de colateral dedicado (>=5 ADA) como garantia de que o script vai executar corretamente. O emissor chama `prepare-collateral` antes da emissão. Analogia: como deixar um "depósito caução" no cartório antes de registrar — se tudo correr bem, o depósito fica intocado.
+2. **Preparação de colateral** — Smart contracts Plutus V3 exigem que a carteira tenha um UTXO de colateral dedicado (>=5 ADA) como garantia de que o script vai executar corretamente. O emissor chama `prepare-collateral` antes da emissão; se a carteira já tiver colateral, a API retorna `COLLATERAL_ALREADY_AVAILABLE` e não faz nada. Caso contrário, monta uma transação de "split" que separa 5 ADA num UTXO dedicado. Analogia: como deixar um "depósito caução" no cartório antes de registrar — se tudo correr bem, o depósito fica intocado.
 
-3. **Tratamento de status codes** — A API do UVerify pode retornar status como `COLLATERAL_REQUIRED` (colateral insuficiente) ou `PENDING_TRANSACTION` (transação anterior ainda em voo). O emissor interpreta esses status e age automaticamente (prepara colateral ou aguarda).
+3. **Tratamento de status codes** — Ao montar a transação via `build_transaction()`, a API do UVerify pode retornar status como `COLLATERAL_REQUIRED` (colateral insuficiente — o emissor prepara e retenta) ou `PENDING_TRANSACTION` (transação anterior ainda não confirmada na rede — o emissor aguarda 30s e retenta). Esses status refletem o estado da carteira e dos UTXOs on-chain.
 
-4. **Callback de assinatura** — Igual à versão simples: recebe a transação CBOR-hex montada pelo UVerify, assina com Ed25519 via PyCardano, e devolve o witness set.
+4. **Callback de assinatura** — O UVerify monta a transação (CBOR-hex) contra o smart contract Plutus V3 e devolve ao emissor para assinar. O emissor decodifica a tx, calcula o hash do `transaction_body`, assina com Ed25519 via PyCardano, e devolve o `TransactionWitnessSet` em CBOR-hex. A mesma chave de pagamento derivada do mnemônico (CIP-1852) é usada tanto para assinar transações quanto para autenticação CIP-8 (challenge-response para operações de estado).
 
-5. **Exponential backoff** — Se a emissão falhar por erro transiente (500, timeout, etc.), retenta até 5 vezes com delays progressivos: 5s, 10s, 20s, 40s, 80s. Isso lida com congestão da rede e propagação de UTXOs.
+5. **Exponential backoff** — Se a emissão falhar por erro transiente (HTTP 500, timeout, UTxO contention), retenta até 5 vezes com delays progressivos: 5s, 10s, 20s, 40s, 80s. Erros fatais como "no utxos found" (carteira vazia) abortam imediatamente sem retentativa. Após cada emissão bem-sucedida, o emissor aguarda a confirmação on-chain (`_aguardar_confirmacao`) antes de retornar — garantindo que o State Datum esteja settled para a próxima emissão da mesma carteira.
 
 **Callback de assinatura de transação** (`sign_tx` — `emissor_sdk.py`):
 
