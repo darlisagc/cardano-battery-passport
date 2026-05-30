@@ -93,11 +93,10 @@ uv run python -m verificador_dpp.verificador <tx_hash>    # ou passe um tx hash 
 
 O verificador percorre a cadeia de credenciais independente de qual opcao de emissao foi usada. A partir da credencial do pack (ou reciclagem), ele segue as referencias `ref_*_tx` de volta pela cadeia — pack → celula → origem — e gera um passaporte consolidado com todos os dados do produto, pegada de carbono e composicao de materiais.
 
-Para verificacao rapida de uma credencial individual via navegador (util para demos ou leitura de QR code):
+Para verificacao rapida de uma credencial individual via navegador (util para demos ou leitura de QR code). Funciona apenas para credenciais emitidas via UVerify (B ou C) e nao reconstroi a cadeia completa.
 
 ```
 https://app.preprod.uverify.io/verify/<DATA_HASH>
-Funciona apenas para credenciais emitidas via UVerify (B ou C) e nao reconstroi a cadeia completa.
 ```
 
 ## Estrutura do projeto
