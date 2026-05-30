@@ -75,10 +75,13 @@ Uso:
 
 Pre-requisitos no .env:
     BLOCKFROST_PROJECT_ID  projeto preprod do Blockfrost
-    TX_HASH_PACK           hash da tx do pack (Ator 3) — ponto de
-                           entrada da cadeia de verificacao
-    DATA_HASH_PACK         (opcional) data_hash do pack; necessario
-                           se o pack foi emitido via UVerify (B/C)
+    TX_HASH_PACK           hash da tx do pack (Ator 3) ou da
+                           reciclagem (Ator 4) — ponto de entrada
+                           da cadeia de verificacao; sobrescrito
+                           automaticamente pela emissao mais recente
+    DATA_HASH_PACK         (opcional) data_hash do pack ou da
+                           reciclagem; necessario se a credencial
+                           de entrada foi emitida via UVerify (B/C)
 """
 
 from __future__ import annotations

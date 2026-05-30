@@ -51,7 +51,7 @@ Quatro atores em sequência, cada um depende do anterior:
 | 1 | origem | `--ator origem` | `ATOR1_TX` | — |
 | 2 | célula | `--ator celula` | `ATOR2_TX` | `ATOR1_TX` |
 | 3 | pack | `--ator pack` | `ATOR3_TX` · `TX_HASH_PACK` · `DATA_HASH_PACK` | `ATOR2_TX` |
-| 4 | reciclagem | `--ator reciclagem` | `ATOR4_TX` | `ATOR1`, `ATOR2`, `ATOR3` |
+| 4 | reciclagem | `--ator reciclagem` | `ATOR4_TX` · `TX_HASH_PACK` · `DATA_HASH_PACK` | `ATOR1`, `ATOR2`, `ATOR3` |
 
 Cada ator pode ser emitido por **três caminhos**:
 
@@ -105,8 +105,8 @@ Cada emissão imprime um `tx_hash` e um `data_hash` no terminal. O `tx_hash` é 
 | `--ator pack` | `ATOR3_TX` · `TX_HASH_PACK` · `DATA_HASH_PACK` |
 | `--ator reciclagem` | `ATOR4_TX` · `TX_HASH_PACK` · `DATA_HASH_PACK` |
 
-💡 **Por que repetir** `TX_HASH_PACK` **para o**  `ATOR3_TX`**?**   
-Porque o verificador da Seção 3 lê `TX_HASH_PACK` (entrada da cadeia da bateria), enquanto o emissor da reciclagem lê `ATOR3_TX` (referência cruzada `ref_pack_tx`). São o mesmo hash, em duas variáveis.
+💡 **Por que `TX_HASH_PACK` aparece tanto no pack quanto na reciclagem?**
+Porque o verificador da Seção 3 lê `TX_HASH_PACK` como ponto de entrada da cadeia. Quando a reciclagem emite, ela sobrescreve `TX_HASH_PACK` e `DATA_HASH_PACK` com os seus próprios valores — assim o verificador sempre usa a emissão mais recente como entrada, sem necessidade de editar o `.env` manualmente.
 
 ### Atalho — qual comando rodar quando
 
@@ -649,7 +649,7 @@ uv run python -m verificador_dpp.emissor_sdk --ator pack
 uv run python -m verificador_dpp.emissor_sdk --ator reciclagem
 ```
 
-💡 **`.env` atualizado automaticamente** — igual ao `emissor_direto`. Cada emissão grava `ATOR<N>_TX` e `DATA_HASH` no `.env`; quando o ator é `pack`, também grava `TX_HASH_PACK` (este último é usado pelo `verificador` como hint inicial quando o pack veio de B/C).
+💡 **`.env` atualizado automaticamente** — igual ao `emissor_direto`. Cada emissão grava `ATOR<N>_TX` e `DATA_HASH` no `.env`; quando o ator é `pack` ou `reciclagem`, também grava `TX_HASH_PACK` e `DATA_HASH_PACK` (usados pelo `verificador` como ponto de entrada da cadeia).
 
 💡 **Relatório HTML.** Igual à Opção A — após cada emissão, um recibo HTML é gerado e aberto automaticamente no navegador. Quando `--ator reciclagem`, um relatório adicional dedicado é gerado com materiais recuperados e rastreabilidade reversa.
 

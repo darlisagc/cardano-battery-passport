@@ -350,3 +350,150 @@ class TestReciclagemReportWiring:
         assert "tx_origem_abc123" in html
         assert "tx_celula_def456" in html
         assert "tx_pack_ghi789" in html
+
+
+# ── .env saving (set_key) in main() ──────────────────────────────────
+
+
+# Minimal env vars required by both main() functions.
+_MAIN_ENV = {
+    "BLOCKFROST_PROJECT_ID": "preprodFAKE",
+    "WALLET_MNEMONIC": "word " * 24,
+    "RUN_ID": "ab12",
+    "ATOR1_TX": "tx1",
+    "ATOR2_TX": "tx2",
+    "ATOR3_TX": "tx3",
+}
+
+
+def _run_main_and_collect_set_key_calls(module_path: str, main_func, ator: str):
+    """Run a main() with heavy patching and return the list of set_key calls.
+
+    Returns a list of (key_name, value) tuples extracted from set_key calls.
+    """
+    set_key_calls: list[tuple] = []
+
+    def fake_set_key(_path, key, value, **_kw):
+        set_key_calls.append((key, value))
+
+    fake_atores = {
+        "origem": lambda env: ({"uverify_template_id": "digitalProductPassport"}, "S1", "G1"),
+        "celula": lambda env: ({"uverify_template_id": "digitalProductPassport"}, "S2", "G2"),
+        "pack": lambda env: ({"uverify_template_id": "digitalProductPassport"}, "S3", "G3"),
+        "reciclagem": lambda env: ({
+            "uverify_template_id": "digitalProductPassport",
+            "ref_pack_tx": "tx3",
+        }, "S4", "G4"),
+    }
+
+    patches = {
+        f"{module_path}.set_key": fake_set_key,
+        f"{module_path}.ATORES": fake_atores,
+        f"{module_path}.PROXIMO_ATOR_ENV": {
+            "origem": "ATOR1_TX", "celula": "ATOR2_TX",
+            "pack": "ATOR3_TX", "reciclagem": "ATOR4_TX",
+        },
+        f"{module_path}.load_dotenv": lambda: None,
+        f"{module_path}.find_dotenv": lambda usecwd=True: ".env",
+        f"{module_path}.RelatorioEmissaoHTML": MagicMock,
+        f"{module_path}.RelatorioReciclagemHTML": MagicMock,
+        f"{module_path}.classificar_campos": lambda p: ({}, {}, {}),
+        f"{module_path}.CredencialDPP": MagicMock,
+        "webbrowser.open": lambda *a, **kw: None,
+        "tempfile.NamedTemporaryFile": MagicMock(
+            return_value=MagicMock(
+                __enter__=lambda s: MagicMock(name="/tmp/fake.html", write=lambda *a: None),
+                __exit__=lambda *a: None,
+            )
+        ),
+        "builtins.print": lambda *a, **kw: None,
+    }
+
+    from contextlib import ExitStack
+    with ExitStack() as stack:
+        stack.enter_context(patch.dict(os.environ, _MAIN_ENV, clear=False))
+        stack.enter_context(patch("sys.argv", ["prog", "--ator", ator]))
+        for target, replacement in patches.items():
+            stack.enter_context(patch(target, replacement))
+        # Patch the emitting function
+        if "emissor_direto" in module_path:
+            stack.enter_context(
+                patch(f"{module_path}.emitir_direto", return_value=("fake_tx", "fake_dh"))
+            )
+        else:
+            stack.enter_context(
+                patch(f"{module_path}.emitir_via_sdk", return_value=("fake_tx", "fake_dh"))
+            )
+        main_func()
+
+    return set_key_calls
+
+
+class TestEnvSavingDireto:
+    """Verify that emissor_direto.main() saves TX_HASH_PACK / DATA_HASH_PACK
+    to .env only for pack and reciclagem actors."""
+
+    def _run(self, ator):
+        from verificador_dpp.emissor_direto import main
+        return _run_main_and_collect_set_key_calls(
+            "verificador_dpp.emissor_direto", main, ator,
+        )
+
+    def test_pack_saves_tx_hash_pack_and_data_hash_pack(self):
+        calls = self._run("pack")
+        keys = [k for k, _ in calls]
+        assert "TX_HASH_PACK" in keys
+        assert "DATA_HASH_PACK" in keys
+
+    def test_reciclagem_saves_tx_hash_pack_and_data_hash_pack(self):
+        calls = self._run("reciclagem")
+        keys = [k for k, _ in calls]
+        assert "TX_HASH_PACK" in keys
+        assert "DATA_HASH_PACK" in keys
+
+    def test_origem_does_not_save_tx_hash_pack(self):
+        calls = self._run("origem")
+        keys = [k for k, _ in calls]
+        assert "TX_HASH_PACK" not in keys
+        assert "DATA_HASH_PACK" not in keys
+
+    def test_celula_does_not_save_tx_hash_pack(self):
+        calls = self._run("celula")
+        keys = [k for k, _ in calls]
+        assert "TX_HASH_PACK" not in keys
+        assert "DATA_HASH_PACK" not in keys
+
+
+class TestEnvSavingSdk:
+    """Verify that emissor_sdk.main() saves TX_HASH_PACK / DATA_HASH_PACK
+    to .env only for pack and reciclagem actors."""
+
+    def _run(self, ator):
+        from verificador_dpp.emissor_sdk import main
+        return _run_main_and_collect_set_key_calls(
+            "verificador_dpp.emissor_sdk", main, ator,
+        )
+
+    def test_pack_saves_tx_hash_pack_and_data_hash_pack(self):
+        calls = self._run("pack")
+        keys = [k for k, _ in calls]
+        assert "TX_HASH_PACK" in keys
+        assert "DATA_HASH_PACK" in keys
+
+    def test_reciclagem_saves_tx_hash_pack_and_data_hash_pack(self):
+        calls = self._run("reciclagem")
+        keys = [k for k, _ in calls]
+        assert "TX_HASH_PACK" in keys
+        assert "DATA_HASH_PACK" in keys
+
+    def test_origem_does_not_save_tx_hash_pack(self):
+        calls = self._run("origem")
+        keys = [k for k, _ in calls]
+        assert "TX_HASH_PACK" not in keys
+        assert "DATA_HASH_PACK" not in keys
+
+    def test_celula_does_not_save_tx_hash_pack(self):
+        calls = self._run("celula")
+        keys = [k for k, _ in calls]
+        assert "TX_HASH_PACK" not in keys
+        assert "DATA_HASH_PACK" not in keys
