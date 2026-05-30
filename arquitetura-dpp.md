@@ -628,7 +628,7 @@ via APIs.**
 | **Blockchain** | Banco de dados distribuido e imutavel — como um cartorio digital publico onde ninguem pode alterar os registros depois de gravados. |
 | **Transacao (tx)** | Um registro gravado na blockchain. Cada transacao recebe um identificador unico chamado TX hash — equivalente ao numero de protocolo de um documento no cartorio. |
 | **Metadata** | Dados adicionais anexados a uma transacao. Na Cardano, sao organizados por "labels" (numeros). Nosso sistema usa o label 1990. |
-| **Smart contract** | Programa que roda na blockchain e valida dados automaticamente antes de permitir o registro. Como um funcionario-robo que confere formularios. |
+| **Smart contract** | Programa que roda na blockchain e valida dados automaticamente antes de permitir o registro. Como um funcionario-robo que confere formularios. No Cardano, chamados de **validators** — escritos em Plutus (Haskell) ou Aiken. |
 | **Redeemer** | Estrutura de dados enviada junto com uma transacao para interagir com um smart contract. No nosso sistema, contem o data_hash do certificado. Pense nele como o "argumento" que voce passa ao funcionario-robo. |
 | **Inline datum** | Dados armazenados diretamente na saida de uma transacao (ao inves de apenas seu hash). No nosso sistema, o smart contract UVerify armazena seu estado interno aqui. |
 | **CBOR** | Formato binario compacto (Concise Binary Object Representation) usado pela Cardano para serializar dados on-chain. Similar ao JSON, mas em binario. |
