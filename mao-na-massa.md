@@ -439,7 +439,7 @@ reciclagem   ref_pack_tx    → ATOR3_TX
 
 ### 2.3 Opção A — Emissor direto (PyCardano)
 
-Esta opção é **puramente Python & Cardano** — usa apenas PyCardano para montar a transação, anexa o payload DPP como **metadata nativa**, e submete via Blockfrost. **Nenhuma chamada à infra do UVerify** acontece (nem na emissão, nem depois). Implementa o padrão *Event Log* (ver 1.6).
+Esta opção é **puramente Python & Cardano** — usa apenas PyCardano para montar a transação, anexa o payload DPP como **metadata nativa**, e submete via Blockfrost. **Nenhuma chamada à infra do UVerify** acontece (nem na emissão, nem depois).
 
 O script em `emissor_direto.py`:
 
