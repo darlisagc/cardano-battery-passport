@@ -691,11 +691,13 @@ Os dois caminhos vivem na mesma cadeia, e qualquer cadeia real do workshop (1+2 
 
 ```
 BLOCKFROST_PROJECT_ID=preprod<seu_project_id>
-TX_HASH_PACK=<ATOR3_TX>
-DATA_HASH_PACK=<data_hash do pack>     # necessário se o pack foi emitido via UVerify (B/C)
+TX_HASH_PACK=<tx_hash>                # tx do pack (Ator 3) ou da reciclagem (Ator 4)
+DATA_HASH_PACK=<data_hash>            # necessário se a credencial de entrada foi emitida via UVerify (B/C)
 ```
 
-`TX_HASH_PACK` é a entrada da cadeia. `DATA_HASH_PACK` é usado como **hint inicial** para o pack quando ele veio do UVerify (a API do UVerify pede pelo hash do documento). Para os atores 2 e 1 da cadeia, o `data_hash` é propagado automaticamente via os campos `ref_*_data_hash` de cada credencial, e também pode ser extraído dos redeemers on-chain.
+💡 **`WALLET_MNEMONIC` não é necessário para verificação.** O verificador é read-only — lê dados públicos da blockchain via Blockfrost e da API UVerify, sem assinar transações.
+
+`TX_HASH_PACK` é o ponto de entrada da cadeia. Se você emitiu até o pack, será o `ATOR3_TX`; se emitiu a reciclagem, será o `ATOR4_TX` (os emissores sobrescrevem `TX_HASH_PACK` automaticamente). O verificador auto-detecta se a credencial de entrada é pack ou reciclagem e ajusta o caminhamento. `DATA_HASH_PACK` é usado como **hint inicial** quando a credencial de entrada veio do UVerify (a API pede pelo `data_hash` para localizar o payload off-chain). Para os atores 2 e 1 da cadeia, o `data_hash` é propagado automaticamente via os campos `ref_*_data_hash` de cada credencial, e também pode ser extraído dos redeemers on-chain.
 
 ### 3.2 verificador.py — fluxo completo
 
