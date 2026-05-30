@@ -87,10 +87,10 @@ A ④ reciclagem referencia **todas** as anteriores — após reciclar, o pack d
 
 |  | A — Python | B — Python via UVerify SDK | C — UI UVerify |
 | :---- | :---- | :---- | :---- |
-| **Emissão** | `emissor_direto.py` — você monta a tx com PyCardano | `emissor_sdk.py` — o SDK monta contra a API do UVerify  | [https://app.preprod.uverify.io](https://app.preprod.uverify.io) (sem código) |
-| **Verificação** | unificada — qualquer combinacao A+B+C usa `verificador.py` (Seção 3\) | unificada — qualquer combinacao A+B+C usa `verificador.py` (Seção 3\) | unificada — qualquer combinacao A+B+C usa `verificador.py` (Seção 3\). Para verificar a transacao feita pelo UVerify UI: `https://app.preprod.uverify.io/verify/<data_hash>` |
-| **O que ensina** | Tx-building e leitura de metadata bruta | Atalho via SDK \- abstrai a complexidade | UX final do UVerify (o que o usuário vê) |
-| **Dependências** | `pycardano` \+ `blockfrost-python` | `uverify-sdk` \+ `blockfrost-python` \+ PyCardano (para assinar) | Apenas browser \+ carteira preprod |
+| **Emissão** | `emissor_direto.py` — monta a tx com PyCardano | `emissor_sdk.py` — SDK monta contra a API UVerify | [app.preprod.uverify.io](https://app.preprod.uverify.io) (sem código) |
+| **Verificação** | `verificador.py` — unificada para A+B+C (Seção 3) | `verificador.py` — unificada para A+B+C (Seção 3) | `verificador.py` ou `app.preprod.uverify.io/verify/<data_hash>` |
+| **O que ensina** | Tx-building e leitura de metadata bruta | Atalho via SDK — abstrai a complexidade | UX final do UVerify (o que o usuário vê) |
+| **Dependências** | `pycardano` + `blockfrost-python` | `uverify-sdk` + `blockfrost-python` + PyCardano | Apenas browser + carteira preprod |
 
 💡 **Recomendação:** caminho misto sugerido — atores 1 e 2 pela **Opção A** (`emissor_direto`), ator 3 pela **Opção B** (`emissor_sdk`), ator 4 pela **Opção C** (UI). Para verificar a cadeia toda, use o `verificador` (Seção 3.5)  
 
