@@ -393,7 +393,7 @@ WALLET_MNEMONIC=palavra1 palavra2 ... palavra24    # Preprod ONLY
 
 ⚠️ **Preprod ONLY.** Cole apenas o mnemônico de uma carteira **preprod** que já recebeu tADA do faucet (Seção 0.3). **Nunca** cole um mnemônico mainnet em arquivo de texto.
 
-⚠️ **Uma carteira para todos os atores (simplificação do workshop).** No workshop, usamos um único `WALLET_MNEMONIC` para emitir credenciais de todos os 4 atores. Em produção, cada empresa (MineraLitio, CellTech, PackMontadora, RecicLar) teria sua própria carteira com chaves independentes — a assinatura criptográfica de cada credencial identificaria inequivocamente o emissor.
+⚠️ **Uma carteira para todos os atores (simplificação do workshop).** No workshop, usamos um único `WALLET_MNEMONIC` para emitir credenciais de todos os 4 atores. Em produção, cada empresa (MineraLitio, CellTech, PackMontadora, RecicLar) teria sua própria carteira com chaves independentes — a assinatura criptográfica de cada credencial identificaria inequivocamente o emissor. Para viabilizar emissões sequenciais de uma única carteira, o código inclui `RUN_ID` (data_hashes únicos por execução), reuso do mesmo State Datum (`state_id`), espera pela confirmação da transação anterior antes de emitir a próxima, e retentativas automáticas em caso de falha.
 
 ⚠️ **Opções B/C — URL da API.** Para que o SDK aponte para a rede preprod, defina `UVERIFY_API_URL` no `.env` (veja `.env.example`). Se não for definida, o SDK usa o default (`api.preprod.uverify.io`), mas é boa prática tornar isso explícito.
 
