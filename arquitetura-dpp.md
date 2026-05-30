@@ -232,9 +232,9 @@ flowchart TB
 ### O que faz o verificador?
 
 O verificador (`verificador.py`) e o modulo que **le e audita** a cadeia de
-suprimentos. Ele recebe como entrada o TX hash da ultima transacao (o Pack) e
-percorre toda a cadeia de tras para frente, coletando os certificados de cada
-empresa ate montar o Passaporte completo da Bateria.
+suprimentos. Ele recebe como entrada o TX hash da ultima transacao (o Pack ou
+a Reciclagem) e percorre toda a cadeia de tras para frente, coletando os
+certificados de cada empresa ate montar o Passaporte completo da Bateria.
 
 ### Como o verificador percorre a cadeia (de ator em ator)
 
