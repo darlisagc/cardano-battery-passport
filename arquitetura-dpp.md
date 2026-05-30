@@ -298,11 +298,11 @@ sequenceDiagram
     participant UV as UVerify API
     participant R as Relatorio
 
-    Note over V: Le TX_HASH_PACK do .env ou argumento da linha de comando
+    Note over V: Le TX hash do Pack ou Reciclagem do .env ou argumento
 
-    rect rgb(255, 243, 205)
-    Note over V,BF: Passo 1 — Buscar credencial do Pack
-    V->>BF: Busca metadata da tx do Pack (TX_HASH_PACK)
+    rect rgb(248, 215, 218)
+    Note over V,BF: Passo 1 — Buscar credencial da Reciclagem
+    V->>BF: Busca metadata da tx da Reciclagem
     alt Opcao A — payload gravado direto na transacao
         BF-->>V: Metadata nativa (label 1990) com todos os campos
         Note over V: Encontra uverify_template_id no label 1990
@@ -317,8 +317,26 @@ sequenceDiagram
     end
     end
 
+    rect rgb(255, 243, 205)
+    Note over V,BF: Passo 2 — Seguir referencia para Pack
+    Note over V: Le ref_pack_tx da credencial da Reciclagem
+    V->>BF: Busca metadata da tx do Pack
+    alt Opcao A — payload gravado direto na transacao
+        BF-->>V: Metadata nativa (label 1990) com todos os campos
+        Note over V: Encontra uverify_template_id no label 1990
+        Note over V: Extrai nome, GTIN, origem, materiais, referencias
+    else Opcoes B/C — payload no servidor UVerify
+        BF-->>V: Sem metadata nativa na transacao
+        V->>BF: Le o redeemer da transacao
+        BF-->>V: Extrai o data_hash
+        V->>UV: GET /api/v1/verify/{data_hash}
+        UV-->>V: JSON com todos os campos do certificado
+        Note over V: Extrai nome, GTIN, origem, materiais, referencias
+    end
+    end
+
     rect rgb(204, 229, 255)
-    Note over V,BF: Passo 2 — Seguir referencia para Celula
+    Note over V,BF: Passo 3 — Seguir referencia para Celula
     Note over V: Le ref_celula_tx da credencial do Pack
     V->>BF: Busca metadata da tx da Celula
     alt Opcao A — payload gravado direto na transacao
@@ -336,7 +354,7 @@ sequenceDiagram
     end
 
     rect rgb(212, 237, 218)
-    Note over V,BF: Passo 3 — Seguir referencia para Origem
+    Note over V,BF: Passo 4 — Seguir referencia para Origem
     Note over V: Le ref_origem_tx da credencial da Celula
     V->>BF: Busca metadata da tx da Origem
     alt Opcao A — payload gravado direto na transacao
@@ -354,9 +372,9 @@ sequenceDiagram
     end
 
     rect rgb(226, 213, 241)
-    Note over V,R: Passo 4 — Montar Passaporte
-    V->>V: Junta origem + celula + pack
-    V->>R: Gera relatorio consolidado
+    Note over V,R: Passo 5 — Montar Passaporte
+    V->>V: Junta origem + celula + pack + reciclagem
+    V->>R: Gera relatorios (terminal + HTML verificado on-chain)
     R-->>V: Passaporte da Bateria completo
     end
 ```
