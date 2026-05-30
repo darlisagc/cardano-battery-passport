@@ -92,8 +92,6 @@ A ④ reciclagem referencia **todas** as anteriores — após reciclar, o pack d
 | **O que ensina** | Tx-building e leitura de metadata bruta | Atalho via SDK — abstrai a complexidade | UX final do UVerify (o que o usuário vê) |
 | **Dependências** | `pycardano` + `blockfrost-python` | `uverify-sdk` + `blockfrost-python` + PyCardano | Apenas browser + carteira preprod |
 
-💡 **Caminho do workshop:** atores 1 e 2 pela **Opção A** (`emissor_direto`), ator 3 pela **Opção B** (`emissor_sdk`), ator 4 pela **Opção C** (UI). Para verificar a cadeia toda, use o `verificador` (Seção 3).
-
 Estado do .env ao longo do workshop
 
 Cada emissão imprime um `tx_hash` e um `data_hash` (ambos os emissores Python) que é adicionado ao `.env` conforme avança:
@@ -381,8 +379,6 @@ Esta seção mostra **três formas** de emitir credenciais DPP em Cardano prepro
 | **A — Python direto** | Você constrói a transação do zero com `TransactionBuilder` e anexa o payload DPP como metadata nativa | PyCardano \+ Blockfrost |
 | **B — Python via SDK** | O SDK do UVerify monta a transação contra a API do mesmo; seu código só assina | `uverify-sdk` |
 | **C — UI UVerify** | Browser \+ carteira; sem código — você preenche o formulário em `app.preprod.uverify.io` | apenas browser |
-
-💡 **Caminho do workshop:** atores 1 e 2 pela **Opção A** (`emissor_direto`), ator 3 pela **Opção B** (`emissor_sdk`), ator 4 pela **Opção C** (UI). Para verificar a cadeia toda, use o `verificador` (Seção 3).
 
 ### 2.1 Configuração antes de emitir
 
