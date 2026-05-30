@@ -39,6 +39,8 @@ O verificador (quem audita) percorre essa cadeia **de tras para frente**: comeca
 pelo Pack (montagem final), segue a referencia para Celula, depois para Origem,
 montando assim o Passaporte completo da Bateria.
 
+> **Diagrama abaixo:** mostra a **ordem de producao** (fluxo para frente). O fluxo de verificacao (de tras para frente) e detalhado na [secao 3](#3-fluxo-do-verificador).
+
 ```mermaid
 flowchart TB
     A1["1. MineraLitio"]
