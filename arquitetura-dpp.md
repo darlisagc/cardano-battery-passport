@@ -93,22 +93,25 @@ Cada seta representa uma **referencia gravada na blockchain**. Por exemplo:
 ```mermaid
 flowchart RL
     V["Verificador\n(quem audita)"]
+    R["Reciclagem\n(fim de vida)"]
     P["Pack\n(montagem)"]
     C["Celula\n(fabricacao)"]
     O["Origem\n(mineracao)"]
 
-    V -- "1. Comeca aqui\n(recebe TX hash do Pack)" --> P
-    P -- "2. Le ref_celula_tx\ne segue a referencia" --> C
-    C -- "3. Le ref_origem_tx\ne segue a referencia" --> O
+    V -- "1. Comeca aqui\n(recebe TX hash do Pack\nou da Reciclagem)" --> R
+    R -- "2. Le ref_pack_tx\ne segue a referencia" --> P
+    P -- "3. Le ref_celula_tx\ne segue a referencia" --> C
+    C -- "4. Le ref_origem_tx\ne segue a referencia" --> O
 
     style V fill:#e2d5f1,stroke:#6f42c1
+    style R fill:#f8d7da,stroke:#dc3545
     style P fill:#fff3cd,stroke:#ffc107
     style C fill:#cce5ff,stroke:#007bff
     style O fill:#d4edda,stroke:#28a745
 ```
 
 O verificador funciona como um detetive seguindo pistas: comeca pelo registro
-mais recente (Pack) e segue os links para tras ate chegar a origem da
+mais recente (Reciclagem ou Pack) e segue os links para tras ate chegar a origem da
 materia-prima.
 
 ---
@@ -240,18 +243,21 @@ por diante, ate chegar na Origem (que nao referencia ninguem — e o inicio da c
 
 ```mermaid
 flowchart TB
-    START["Entrada: TX hash do Pack"]
+    START["Entrada: TX hash do Pack ou Reciclagem"]
+    RECICL["Credencial da Reciclagem\n— nome, GTIN, materiais recuperados —\ncontem: ref_pack_tx, ref_celula_tx, ref_origem_tx"]
     PACK["Credencial do Pack\n— nome, GTIN, origem, materiais —\ncontem: ref_celula_tx = abc123..."]
     CELULA["Credencial da Celula\n— nome, GTIN, origem, materiais —\ncontem: ref_origem_tx = def456..."]
     ORIGEM["Credencial da Origem\n— nome, GTIN, origem, materiais —\nnao referencia ninguem (inicio da cadeia)"]
-    FIM["Passaporte completo montado\nOrigem + Celula + Pack"]
+    FIM["Passaporte completo montado\nOrigem + Celula + Pack + Reciclagem"]
 
-    START -- "Busca na blockchain" --> PACK
+    START -- "Busca na blockchain" --> RECICL
+    RECICL -- "Segue ref_pack_tx" --> PACK
     PACK -- "Segue ref_celula_tx = abc123..." --> CELULA
     CELULA -- "Segue ref_origem_tx = def456..." --> ORIGEM
     ORIGEM -- "Cadeia completa" --> FIM
 
-    style START fill:#fff3cd,stroke:#ffc107
+    style START fill:#f8d7da,stroke:#dc3545
+    style RECICL fill:#f8d7da,stroke:#dc3545
     style PACK fill:#fff3cd,stroke:#ffc107
     style CELULA fill:#cce5ff,stroke:#007bff
     style ORIGEM fill:#d4edda,stroke:#28a745
