@@ -151,7 +151,10 @@ def payload_origem(env: dict[str, str] | None = None) -> tuple[dict, str, str]:
     payload = {
         # Identificacao do template UVerify.
         "uverify_template_id": "digitalProductPassport",
-        # Impede sobrescrita do certificado (padrao UVerify para DPP).
+        # Impede sobrescrita do certificado — necessario apenas para o
+        # UVerify (emissor_sdk / UI). Como os payloads sao compartilhados
+        # entre emissor_direto e emissor_sdk, este campo acaba indo
+        # on-chain tambem na Opcao A, onde e inerte (ninguem o le).
         "uverify_update_policy": "restricted",
         # Dados do produto.
         "name": "Lote Litio Jequitinhonha 2026-05",
