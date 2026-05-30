@@ -803,7 +803,10 @@ O parâmetro `?serial=` na URL é o padrão *privacy-split* em ação (ver Seç�
 
 ### 4.1 Verificação antes de reciclar
 
-O Ator 4 (RecicLar, Sorocaba/SP) **não confia** em palavra — roda um dos verificadores da Seção 3 contra o hash do pack que recebeu. Se o relatório der "***PASSAPORTE VALIDO***" e a cadeia bater, a recicladora tem garantia de procedência ambiental e ESG.
+A verificação pode ser feita em **dois momentos** do ciclo de vida:
+
+- **Antes da reciclagem** — o Ator 4 (RecicLar, Sorocaba/SP) roda o verificador da Seção 3 contra o `TX_HASH_PACK` para validar a cadeia inteira (pack → célula → origem) antes de processar o material. Se o relatório der "***PASSAPORTE VALIDO***" e a cadeia bater, a recicladora tem garantia de procedência ambiental e ESG.
+- **Depois da reciclagem** — qualquer parte interessada (regulador europeu, auditor, comprador de materiais reciclados) pode rodar o verificador contra o `TX_HASH_PACK` da reciclagem (Ator 4) para auditar a cadeia completa de 5 passos: reciclagem → pack → célula → origem. O verificador auto-detecta que a credencial de entrada é de reciclagem e ajusta o caminhamento.
 
 ### 4.2 Emissão da credencial de reciclagem
 
