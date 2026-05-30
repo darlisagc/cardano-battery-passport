@@ -230,6 +230,7 @@ uv --version        # uv 0.5.* ou superior
 > - **Opção A (metadata nativa):** ~0.18 ADA por tx (apenas fee de rede).
 > - **Opções B/C (UVerify):** ~0.34–0.45 ADA por certificado + ~2 ADA de fee única para criar o State Datum (reembolsável ao fechar).
 > - Para custos em produção (mainnet), consulte: https://docs.uverify.io/pricing
+> - Para simular custos, use o sandbox do UVerify: https://uverify.io/blog/sandbox-playground/
 
 ### 0.4 UVerify
 
