@@ -139,8 +139,8 @@ Termos essenciais usados ao longo do workshop. Consulte sempre que encontrar alg
 
 | Termo | Definição |
 |-------|-----------|
-| **Blockchain** | Registro distribuído e imutável de transações, mantido por uma rede de nós descentralizados. Analogia: um "cartório digital" público onde qualquer registro gravado é permanente e visível para todos. |
-| **Cardano** | Blockchain proof-of-stake usada neste workshop; suporta smart contracts e metadata nativa. Analogia: o "cartório" específico que escolhemos para registrar os certificados DPP. |
+| **Blockchain** | Registro distribuído e imutável de transações, mantido por uma rede pública e permissionless de nós descentralizados — qualquer pessoa pode participar sem autorização de uma autoridade central. Analogia: um "cartório digital" público onde qualquer registro gravado é permanente e visível para todos. |
+| **Cardano** | Plataforma blockchain de terceira geração baseada no protocolo de consenso proof-of-stake Ouroboros. Desenvolvida com filosofia research-first e foco em sustentabilidade, escalabilidade e governança on-chain. Suporta smart contracts e metadata nativa. Neste workshop, é o "cartório" que usamos para registrar os certificados DPP. |
 | **Preprod** | Rede de testes do Cardano que simula a mainnet sem valor real. Analogia: como um "modo sandbox" — funciona igual à rede real, mas com dinheiro fictício para aprender sem risco. |
 | **tADA** | ADA de teste (sem valor monetário), obtida gratuitamente pelo faucet para pagar taxas na preprod. Analogia: "dinheiro de mentira" para pagar as pequenas taxas de registro no sandbox. |
 | **tx / tx_hash** | Transação na blockchain; `tx_hash` é o identificador único (hash SHA-256) de uma transação confirmada. Analogia: como um número de protocolo — cada registro no cartório tem um código único. |
