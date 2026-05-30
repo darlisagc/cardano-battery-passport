@@ -96,14 +96,14 @@ A ④ reciclagem referencia **todas** as anteriores — após reciclar, o pack d
 
 Estado do .env ao longo do workshop
 
-Cada emissão imprime um `tx_hash` e um `data_hash` no terminal. O `tx_hash` é adicionado ao `.env` automaticamente (para encadear o próximo ator); o `data_hash` é salvo no `.env` apenas para o pack (`DATA_HASH_PACK`), pois é usado na URL de verificação UVerify:
+Cada emissão imprime um `tx_hash` e um `data_hash` no terminal. O `tx_hash` é adicionado ao `.env` automaticamente (para encadear o próximo ator); o `data_hash` é salvo no `.env` para o pack e para a reciclagem (`TX_HASH_PACK` · `DATA_HASH_PACK`), pois é usado na URL de verificação UVerify:
 
 | Após rodar | Variáveis `.env` |
 | :---- | :---- |
 | `--ator origem` | `ATOR1_TX` |
 | `--ator celula` | `ATOR2_TX` |
 | `--ator pack` | `ATOR3_TX` · `TX_HASH_PACK` · `DATA_HASH_PACK` |
-| `--ator reciclagem` | `ATOR4_TX` |
+| `--ator reciclagem` | `ATOR4_TX` · `TX_HASH_PACK` · `DATA_HASH_PACK` |
 
 💡 **Por que repetir** `TX_HASH_PACK` **para o**  `ATOR3_TX`**?**   
 Porque o verificador da Seção 3 lê `TX_HASH_PACK` (entrada da cadeia da bateria), enquanto o emissor da reciclagem lê `ATOR3_TX` (referência cruzada `ref_pack_tx`). São o mesmo hash, em duas variáveis.
@@ -358,7 +358,8 @@ Existem **duas formas distintas** de ancorar um DPP em Cardano, que definem **on
 | Privacidade | Tudo público on-chain | Só o hash on-chain; payload pode ter ACL no servidor |
 | Dependência externa | Nenhuma — qualquer indexador Cardano | UVerify precisa estar no ar para resolver o payload |
 | Auditabilidade | Total, sem terceiros | Tamper-evidence garantida pelo hash; conteúdo depende do UVerify |
-| [Padrão Cardano Foundation DPP Standards](https://github.com/cardano-foundation/cardano-dpp-standards) | *Event Log* | *Static Passport Anchor* |
+
+> Para mais detalhes sobre os padrões, veja o repositório [cardano-dpp-standards](https://github.com/cardano-foundation/cardano-dpp-standards).
 
 **Quando usar cada um:**
 
@@ -376,7 +377,7 @@ Esta seção mostra **três formas** de emitir credenciais DPP em Cardano prepro
 | Opção | Como funciona | Dependência principal |
 | :---- | :---- | :---- |
 | **A — Python direto** | Você constrói a transação do zero com `TransactionBuilder` e anexa o payload DPP como metadata nativa | PyCardano \+ Blockfrost |
-| **B — Python via SDK** | O SDK do UVerify monta a transação contra a API do mesmo; seu código só assina | `uverify-sdk` |
+| **B — Python via SDK** | O SDK do UVerify monta a transação contra a API do mesmo; seu código só assina | `uverify-sdk` \+ Blockfrost |
 | **C — UI UVerify** | Browser \+ carteira; sem código — você preenche o formulário em `app.preprod.uverify.io` | apenas browser |
 
 💡 Misture as três opções livremente — o `verificador` percorre a cadeia independente do método de emissão usado.

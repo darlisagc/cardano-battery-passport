@@ -569,7 +569,7 @@ def main() -> None:
     # Auto-atualiza .env (sem aspas, no formato existente)
     atualizadas = [f"{proxima_chave}={tx_hash}"]
     set_key(env_path, proxima_chave, tx_hash, quote_mode="never")
-    if args.ator == "pack":
+    if args.ator in ("pack", "reciclagem"):
         set_key(env_path, "TX_HASH_PACK", tx_hash, quote_mode="never")
         set_key(env_path, "DATA_HASH_PACK", dh, quote_mode="never")
         atualizadas.append(f"TX_HASH_PACK={tx_hash}")
