@@ -810,46 +810,65 @@ A verificação pode ser feita em **dois momentos** do ciclo de vida:
 
 ### 4.2 Emissão da credencial de reciclagem
 
-A credencial do Ator 4 já foi emitida na Seção 2 quando você rodou `--ator reciclagem` (em qualquer das duas opções — direto ou SDK). O payload está em `_payloads.py::payload_reciclagem`:
+A credencial do Ator 4 já foi emitida na Seção 2 quando você rodou `--ator reciclagem` (em qualquer das três opções — direto, SDK ou UI). O payload está em `_payloads.py::payload_reciclagem`:
 
 ```json
 {
     "uverify_template_id": "digitalProductPassport",
+    "uverify_update_policy": "restricted",
     "name": "Reciclagem Pack 75kWh - SR-2031-09-{suffix}",
     "issuer": "RecicLar Sorocaba S.A.",
     "gtin": "7891234560129",
-    ...
-    "ref_pack_tx":   ATOR3_TX,        # tx hash do pack
-    "ref_pack_data_hash":       sha256(gtin+serial do Ator 3),
-    "ref_celula_tx": ATOR2_TX,        # tx hash da célula
-    "ref_celula_data_hash":     sha256(gtin+serial do Ator 2),
-    "ref_origem_tx": ATOR1_TX,        # tx hash da origem
-    "ref_origem_data_hash":     sha256(gtin+serial do Ator 1)
+    "uv_url_serial": "sha256(serial)",
+    "origin": "Sorocaba, SP, BR",
+    "manufactured": "2031-09-17",
+    "recycled_content": "N/A (processo de reciclagem)",
+    "mat_litio_recuperado": "3.8 kg",
+    "mat_niquel_recuperado": "38 kg",
+    "mat_cobalto_recuperado": "4.6 kg",
+    "mat_cobre_recuperado": "9.2 kg",
+    "ref_pack_tx":          ATOR3_TX,                       # tx hash do pack
+    "ref_pack_data_hash":   "sha256(gtin+serial do Ator 3)",
+    "ref_celula_tx":        ATOR2_TX,                       # tx hash da célula
+    "ref_celula_data_hash": "sha256(gtin+serial do Ator 2)",
+    "ref_origem_tx":        ATOR1_TX,                       # tx hash da origem
+    "ref_origem_data_hash": "sha256(gtin+serial do Ator 1)"
 }
 ```
 
-A diferença em relação aos outros atores: a recicladora referencia **todas** as credenciais anteriores, não só a imediatamente prévia. Cada referência inclui o par `ref_*_tx` (tx hash) + `ref_*_data_hash` (sha256(gtin+serial) do ator referenciado) — o data_hash é essencial para que o verificador consiga localizar credenciais emitidas via UVerify (Opções B/C). Após a reciclagem o pack deixa de existir; o DPP de reciclagem se torna o ponteiro definitivo para tudo o que veio antes.
+**Diferenças em relação aos outros atores:**
+
+- **Referencia todas as credenciais anteriores** — enquanto célula referencia só origem e pack referencia só célula, a reciclagem referencia **pack + célula + origem** simultaneamente. Isso permite ao verificador reconstruir a cadeia completa a partir de um único ponto de entrada.
+- **Cada referência inclui dois campos** — `ref_*_tx` (tx hash para localizar a transação na blockchain) + `ref_*_data_hash` (sha256(gtin+serial) para localizar o payload na API UVerify). O par é essencial para cadeias mistas (ex: origem via A, célula via B) onde o verificador precisa de ambos os caminhos.
+- **Materiais recuperados** (`mat_*`) — campos específicos da reciclagem que documentam o que foi extraído do pack (lítio, níquel, cobalto, cobre).
+- **Sobrescreve `TX_HASH_PACK` e `DATA_HASH_PACK`** — após a emissão, o `.env` é atualizado para que o verificador use a reciclagem como ponto de entrada (ver Seção 3.1). O pack deixa de existir fisicamente; o DPP de reciclagem se torna o ponteiro definitivo para tudo o que veio antes.
 
 💡 **Relatório de reciclagem dedicado.** Além do recibo HTML padrão (gerado para todos os atores), a emissão de `--ator reciclagem` gera automaticamente um relatório HTML adicional com seção de **materiais recuperados** e **rastreabilidade reversa** — mostrando os links Cexplorer para todas as credenciais anteriores da cadeia (pack, célula, origem).
 
 ### 4.3 Ciclo completo — diagrama
 
 ```
-[MineraLitio]  --tx1-->  [CellTech]  --tx2-->  [PackMontadora]
-     MG                     BA                      SP
-      |                      |                       |
-      |                      |                       v
-      |                      |                 [Veiculo EV]
-      |                      |                       |
-      |                      |                       v
-      |                      |                 (vida util ~10 anos)
-      |                      |                       |
-      v                      v                       v
-      +----------------------+------------> [RecicLar] --tx4
+[MineraLitio]  --tx1-->  [CellTech]  --tx2-->  [PackMontadora]  --tx3
+     MG                     BA                      SP              |
+      |                      |                       |              v
+      |                      |                       v         [Pack EV 75kWh]
+      |                      |                 [Veiculo EV]         |
+      |                      |                       |         exportado p/ UE
+      |                      |                       v              |
+      |                      |                 (vida util ~10 anos)  |
+      |                      |                       |              v
+      |                      |                       |     (retorno ao Brasil)
+      v                      v                       v              |
+      +----------------------+-----------------------+----> [RecicLar] --tx4
+                                                              SP
+                   ref_origem_tx, ref_celula_tx, ref_pack_tx
                    todas referenciadas em tx4
+
+      Verificação: qualquer parte pode rodar o verificador
+      contra TX_HASH_PACK (= tx4) e auditar a cadeia completa.
 ```
 
-A cadeia forma um grafo acíclico verificável por qualquer parte — desde o regulador europeu que quer checar elegibilidade ao EU Battery Regulation, até o estudante que está fazendo TCC sobre circularidade.
+A cadeia forma um grafo acíclico verificável por **qualquer parte** — a recicladora antes de processar (Seção 4.1), o regulador europeu que quer checar elegibilidade ao EU Battery Regulation, o comprador de materiais reciclados que precisa de rastreabilidade ESG, ou o estudante que está fazendo TCC sobre circularidade. A verificação é read-only e não requer carteira nem credenciais — basta o `TX_HASH_PACK` e acesso à internet.
 
 ## Seção 5 — Troubleshooting
 
