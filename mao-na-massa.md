@@ -96,7 +96,7 @@ A ④ reciclagem referencia **todas** as anteriores — após reciclar, o pack d
 
 Estado do .env ao longo do workshop
 
-Cada emissão imprime um `tx_hash` e um `data_hash` (ambos os emissores Python) que é adicionado ao `.env` conforme avança:
+Cada emissão imprime um `tx_hash` e um `data_hash` no terminal. O `tx_hash` é adicionado ao `.env` automaticamente (para encadear o próximo ator); o `data_hash` é salvo no `.env` apenas para o pack (`DATA_HASH_PACK`), pois é usado na URL de verificação UVerify:
 
 | Após rodar | Variáveis `.env` |
 | :---- | :---- |
@@ -123,7 +123,7 @@ uv run python -m verificador_dpp.emissor_direto --ator pack
 uv run python -m verificador_dpp.emissor_direto --ator reciclagem
 
 # (mesmo padrao com emissor_sdk se quiser ver a Opção B —
-#  ou misture: 1+2 via direto, 3 via sdk, 4 via UI)
+#  ou misture as opções livremente)
 
 # VERIFICAÇÃO — único verificador, valida qualquer combinacao A+B+C
 uv run python -m verificador_dpp.verificador
