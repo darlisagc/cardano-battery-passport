@@ -19,13 +19,7 @@ A cadeia de suprimentos e composta por **4 empresas** (atores). Cada empresa
 registra uma credencial (certificado) na blockchain Cardano contendo informacoes
 sobre sua etapa de producao.
 
-> **Nota sobre carteiras:** Em um cenario real de producao, **cada empresa teria
-> sua propria carteira** (chave privada independente), garantindo que somente a
-> empresa responsavel possa assinar credenciais em seu nome. A assinatura
-> criptografica de cada transacao identificaria inequivocamente o emissor. Neste
-> workshop, por simplicidade, **todos os atores compartilham a mesma carteira**
-> (mesmo mnemonico), permitindo focar no encadeamento e na verificacao sem a
-> complexidade de gerenciar multiplas carteiras e transferir tADA entre elas.
+> **Nota sobre carteiras:** Em producao, **cada ator teria sua propria carteira** (chave privada independente), garantindo que somente a empresa responsavel possa assinar credenciais em seu nome. Neste workshop, por simplicidade, **todos os atores compartilham a mesma carteira** (mesmo mnemonico no `.env`). Isso permite focar no encadeamento e na verificacao sem a complexidade de gerenciar multiplas carteiras. Para viabilizar emissoes sequenciais de uma unica carteira, o codigo inclui `RUN_ID` (data_hashes unicos por execucao), reuso do mesmo State Datum (`state_id`), espera pela confirmacao da transacao anterior antes de emitir a proxima, e retentativas automaticas em caso de falha.
 
 **O ponto-chave:** cada empresa inclui no seu registro uma **referencia ao
 registro da empresa anterior**. Isso cria uma corrente de ligacoes que permite
