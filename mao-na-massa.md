@@ -123,7 +123,7 @@ uv run python -m verificador_dpp.emissor_direto --ator pack
 uv run python -m verificador_dpp.emissor_direto --ator reciclagem
 
 # (mesmo padrao com emissor_sdk se quiser ver a Opção B —
-#  ou misture: 1+2 via direto, 3 via sdk, 4 via UI; recomendado)
+#  ou misture: 1+2 via direto, 3 via sdk, 4 via UI)
 
 # VERIFICAÇÃO — único verificador, valida qualquer combinacao A+B+C
 uv run python -m verificador_dpp.verificador
@@ -382,7 +382,7 @@ Esta seção mostra **três formas** de emitir credenciais DPP em Cardano prepro
 | **B — Python via SDK** | O SDK do UVerify monta a transação contra a API do mesmo; seu código só assina | `uverify-sdk` |
 | **C — UI UVerify** | Browser \+ carteira; sem código — você preenche o formulário em `app.preprod.uverify.io` | apenas browser |
 
-💡 **Recomendação:** caminho misto sugerido — ators 1 e 2 pela **Opção A**, ator 3 e 4 pela **Opção B**, ou ator 4 pela **Opção C** (UI). Verifique a cadeia toda com `verificador` (Seção 3.5).
+💡 **Caminho do workshop:** atores 1 e 2 pela **Opção A** (`emissor_direto`), ator 3 pela **Opção B** (`emissor_sdk`), ator 4 pela **Opção C** (UI). Para verificar a cadeia toda, use o `verificador` (Seção 3).
 
 ### 2.1 Configuração antes de emitir
 
@@ -682,7 +682,7 @@ Diferente da emissão (três opções A/B/C), a **verificação é unificada**: 
 - Credenciais emitidas via `emissor_direto` (Opção A) gravam o payload completo na **metadata nativa** do Cardano (como um "anexo" da transação) — qualquer indexador Cardano lê.
 - Credenciais emitidas via UVerify (Opções B/C) gravam só um *anchor hash* (impressão digital) em **script datum**; o payload rico fica off-chain, indexado pela API do UVerify por `data_hash`.
 
-Os dois caminhos vivem na mesma cadeia, e qualquer cadeia real do workshop (recomendação: 1+2 via A, 3 via B, 4 via C) é heterogênea. O `verificador` faz fallback automático entre os dois — analogia: como um detetive que sabe ler tanto a "ata do cartório" (metadata nativa) quanto consultar o "cofre do cartório" (API UVerify) para encontrar os dados.
+Os dois caminhos vivem na mesma cadeia, e qualquer cadeia real do workshop (1+2 via A, 3 via B, 4 via C) é heterogênea. O `verificador` faz fallback automático entre os dois — analogia: como um detetive que sabe ler tanto a "ata do cartório" (metadata nativa) quanto consultar o "cofre do cartório" (API UVerify) para encontrar os dados.
 
 ### 3.1 Pré-requisitos no `.env`
 
