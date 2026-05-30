@@ -221,8 +221,9 @@ flowchart TB
 - **Opcao B** e ideal para **integracao programatica** com privacidade: o SDK
   cuida da complexidade do smart contract, e o payload completo fica off-chain
   (voce controla quem acessa).
-- **Opcao C** e ideal para **testes rapidos** ou usuarios nao-tecnicos: basta
-  acessar o site, preencher o formulario e assinar com uma wallet de navegador.
+- **Opcao C** e ideal para **testes rapidos**, usuarios nao-tecnicos ou quem
+  nao precisa emitir com frequencia: basta acessar o site, preencher o
+  formulario e assinar com uma wallet de navegador.
 
 ---
 
