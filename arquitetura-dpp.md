@@ -303,14 +303,14 @@ sequenceDiagram
 
     rect rgb(248, 215, 218)
     Note over V,BF: Passo 1 — Buscar credencial da Reciclagem
-    V->>BF: Busca metadata da tx da Reciclagem
+    V->>BF: transaction_metadata(tx_hash)
     alt Opcao A — payload gravado direto na transacao
         BF-->>V: Metadata nativa (label 1990) com todos os campos
         Note over V: Encontra uverify_template_id no label 1990
         Note over V: Extrai nome, GTIN, origem, materiais, referencias
     else Opcoes B/C — payload no servidor UVerify
         BF-->>V: Sem metadata nativa na transacao
-        V->>BF: Le o redeemer da transacao (estrutura do smart contract)
+        V->>BF: transaction_redeemers(tx_hash)
         BF-->>V: Extrai o data_hash (impressao digital do certificado)
         V->>UV: GET /api/v1/verify/{data_hash}
         UV-->>V: JSON com todos os campos do certificado
@@ -321,14 +321,14 @@ sequenceDiagram
     rect rgb(255, 243, 205)
     Note over V,BF: Passo 2 — Seguir referencia para Pack
     Note over V: Le ref_pack_tx da credencial da Reciclagem
-    V->>BF: Busca metadata da tx do Pack
+    V->>BF: transaction_metadata(tx_hash)
     alt Opcao A — payload gravado direto na transacao
         BF-->>V: Metadata nativa (label 1990) com todos os campos
         Note over V: Encontra uverify_template_id no label 1990
         Note over V: Extrai nome, GTIN, origem, materiais, referencias
     else Opcoes B/C — payload no servidor UVerify
         BF-->>V: Sem metadata nativa na transacao
-        V->>BF: Le o redeemer da transacao
+        V->>BF: transaction_redeemers(tx_hash)
         BF-->>V: Extrai o data_hash
         V->>UV: GET /api/v1/verify/{data_hash}
         UV-->>V: JSON com todos os campos do certificado
@@ -339,14 +339,14 @@ sequenceDiagram
     rect rgb(204, 229, 255)
     Note over V,BF: Passo 3 — Seguir referencia para Celula
     Note over V: Le ref_celula_tx da credencial do Pack
-    V->>BF: Busca metadata da tx da Celula
+    V->>BF: transaction_metadata(tx_hash)
     alt Opcao A — payload gravado direto na transacao
         BF-->>V: Metadata nativa (label 1990) com todos os campos
         Note over V: Encontra uverify_template_id no label 1990
         Note over V: Extrai nome, GTIN, origem, materiais, referencias
     else Opcoes B/C — payload no servidor UVerify
         BF-->>V: Sem metadata nativa na transacao
-        V->>BF: Le o redeemer da transacao
+        V->>BF: transaction_redeemers(tx_hash)
         BF-->>V: Extrai o data_hash
         V->>UV: GET /api/v1/verify/{data_hash}
         UV-->>V: JSON com todos os campos do certificado
@@ -357,14 +357,14 @@ sequenceDiagram
     rect rgb(212, 237, 218)
     Note over V,BF: Passo 4 — Seguir referencia para Origem
     Note over V: Le ref_origem_tx da credencial da Celula
-    V->>BF: Busca metadata da tx da Origem
+    V->>BF: transaction_metadata(tx_hash)
     alt Opcao A — payload gravado direto na transacao
         BF-->>V: Metadata nativa (label 1990) com todos os campos
         Note over V: Encontra uverify_template_id no label 1990
         Note over V: Extrai nome, GTIN, origem, materiais, referencias
     else Opcoes B/C — payload no servidor UVerify
         BF-->>V: Sem metadata nativa na transacao
-        V->>BF: Le o redeemer da transacao
+        V->>BF: transaction_redeemers(tx_hash)
         BF-->>V: Extrai o data_hash
         V->>UV: GET /api/v1/verify/{data_hash}
         UV-->>V: JSON com todos os campos do certificado
