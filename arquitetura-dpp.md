@@ -252,12 +252,14 @@ flowchart TB
     CELULA["Credencial da Celula\n— nome, GTIN, origem, materiais —\ncontem: ref_origem_tx = def456..."]
     ORIGEM["Credencial da Origem\n— nome, GTIN, origem, materiais —\nnao referencia ninguem (inicio da cadeia)"]
     FIM["Passaporte completo montado\nOrigem + Celula + Pack + Reciclagem"]
+    REL["Relatorios gerados\nTerminal + HTML verificado on-chain"]
 
     START -- "Busca na blockchain" --> RECICL
     RECICL -- "Segue ref_pack_tx" --> PACK
     PACK -- "Segue ref_celula_tx = abc123..." --> CELULA
     CELULA -- "Segue ref_origem_tx = def456..." --> ORIGEM
     ORIGEM -- "Cadeia completa" --> FIM
+    FIM -- "Gera relatorios" --> REL
 
     style START fill:#f8d7da,stroke:#dc3545
     style RECICL fill:#f8d7da,stroke:#dc3545
@@ -265,6 +267,7 @@ flowchart TB
     style CELULA fill:#cce5ff,stroke:#007bff
     style ORIGEM fill:#d4edda,stroke:#28a745
     style FIM fill:#e2d5f1,stroke:#6f42c1
+    style REL fill:#e8f5e9,stroke:#43a047
 ```
 
 Cada seta representa o verificador **seguindo uma referencia** gravada dentro
