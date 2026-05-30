@@ -17,12 +17,12 @@ A partir de **fevereiro de 2027**, a União Europeia passa a exigir um **Battery
 
 Neste hands-on, **você interpreta os quatro atores** de uma única cadeia:
 
-> **⚠️ Nota sobre carteiras:** Em um cenário real de produção, **cada ator da cadeia teria sua própria carteira** (chave privada independente), garantindo que somente a empresa responsável possa assinar credenciais em seu nome. Neste workshop, por simplicidade, **todos os atores compartilham a mesma carteira** (mesmo mnemônico). Isso permite focar no encadeamento e na verificação sem a complexidade de gerenciar múltiplas carteiras e transferir tADA entre elas.
-
 - Em **2026**, a *MineraLitio* extrai um lote de Li₂CO₃ em Araçuaí (MG) e emite o primeiro DPP — **origem**.   
 - Logo depois, a *CellTech* monta células NMC em Camaçari (BA) e emite **célula**, referenciando *origem*.   
 - Em São Bernardo do Campo (SP), a *PackMontadora* monta o pack de 75 kWh e emite **pack**, referenciando *célula*.   
 - Em **2028** o pack viaja num EV brasileiro exportado para a UE; depois da vida útil em algum estacionamento de Brussels, **dez anos depois** o pack volta ao Brasil e cai na *RecicLar*, em Sorocaba (SP), que **verifica a cadeia inteira on-chain antes de processar** — só então emite o DPP de **reciclagem**, fechando o ciclo.
+
+> **Nota sobre carteiras:** Em producao, **cada ator teria sua propria carteira** (chave privada independente), garantindo que somente a empresa responsavel possa assinar credenciais em seu nome. Neste workshop, por simplicidade, **todos os atores compartilham a mesma carteira** (mesmo mnemonico no `.env`). Isso permite focar no encadeamento e na verificacao sem a complexidade de gerenciar multiplas carteiras. Para viabilizar emissoes sequenciais de uma unica carteira, o codigo inclui `RUN_ID` (data_hashes unicos por execucao), reuso do mesmo State Datum (`state_id`), espera pela confirmacao da transacao anterior antes de emitir a proxima, e retentativas automaticas em caso de falha.
 
 Cada DPP é uma transação no Cardano. As **referências cruzadas** entre as credenciais (`ref_*_tx`) são o que torna a cadeia auditável por *qualquer parte* — regulador europeu, comprador europeu, recicladora brasileira — sem pedir permissão a um gatekeeper.
 
