@@ -636,7 +636,7 @@ via APIs.**
 | **data_hash** | Impressao digital SHA-256 calculada a partir de `gtin + serial`. Especifica do template DPP (`digitalProductPassport`) usado neste projeto. Serve como chave unica para buscar o certificado completo no UVerify. |
 | **SHA-256** | Algoritmo de hash criptografico que gera uma sequencia fixa de 32 bytes (256 bits) a partir de qualquer entrada. Mudar um unico caractere na entrada produz um hash completamente diferente. |
 | **Blockfrost** | Servico SaaS que fornece uma API REST para ler dados da blockchain Cardano sem precisar rodar um no completo. |
-| **UVerify** | Plataforma que emite e verifica certificados de produtos usando smart contracts na Cardano. Fornece SDK, API e interface web. |
+| **UVerify** | Plataforma de autenticacao de documentos na blockchain Cardano. Calcula uma impressao digital (SHA-256) localmente e grava apenas o hash on-chain — os dados nunca saem da maquina do usuario. Oferece 3 formas de uso: interface web (app.uverify.io), REST API publica (sem autenticacao, sem rate limit) e SDKs (Python, TypeScript, Java). Open-source e self-hostable. Neste projeto usamos o template `digitalProductPassport` para emissao e verificacao de credenciais DPP. |
 | **Preprod** | Rede de testes da Cardano. Funciona como a rede principal, mas com dinheiro digital sem valor real — ideal para desenvolvimento. |
 | **DPP** | Digital Product Passport — exigencia regulatoria da Uniao Europeia para rastreabilidade de baterias, cobrindo origem, composicao e ciclo de vida. |
 | **Payload** | Conjunto de dados que compoe o certificado de um produto (nome, fabricante, GTIN, materiais, referencias, etc.). |
