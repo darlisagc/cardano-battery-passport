@@ -1,4 +1,5 @@
-"""Tests for emissor_sdk.py — SDK base URL validation and CertificateData construction."""
+"""Tests for emissor_sdk.py — SDK base URL validation, CertificateData construction,
+and reciclagem report wiring."""
 
 import os
 from unittest.mock import MagicMock, patch
@@ -263,3 +264,89 @@ class TestCertificateDataConstruction:
         # _PATCH_ESTADO returns None, so state_id=None should be passed
         call_kwargs = mock_emitir.call_args[1]
         assert call_kwargs["state_id"] is None
+
+
+# ── Reciclagem report wiring ─────────────────────────────────────────
+
+
+class TestReciclagemReportWiring:
+    """Verify that reciclagem report imports exist and wiring logic works."""
+
+    def test_emissor_sdk_imports_relatorio_reciclagem(self):
+        """emissor_sdk should export RelatorioReciclagemHTML."""
+        from verificador_dpp.emissor_sdk import RelatorioReciclagemHTML
+
+        assert RelatorioReciclagemHTML is not None
+
+    def test_emissor_sdk_imports_classificar_campos(self):
+        """emissor_sdk should export classificar_campos."""
+        from verificador_dpp.emissor_sdk import classificar_campos
+
+        assert callable(classificar_campos)
+
+    def test_emissor_sdk_imports_credencial_dpp(self):
+        """emissor_sdk should export CredencialDPP."""
+        from verificador_dpp.emissor_sdk import CredencialDPP
+
+        assert CredencialDPP is not None
+
+    def test_emissor_direto_imports_relatorio_reciclagem(self):
+        """emissor_direto should export RelatorioReciclagemHTML."""
+        from verificador_dpp.emissor_direto import RelatorioReciclagemHTML
+
+        assert RelatorioReciclagemHTML is not None
+
+    def test_emissor_direto_imports_classificar_campos(self):
+        """emissor_direto should export classificar_campos."""
+        from verificador_dpp.emissor_direto import classificar_campos
+
+        assert callable(classificar_campos)
+
+    def test_emissor_direto_imports_credencial_dpp(self):
+        """emissor_direto should export CredencialDPP."""
+        from verificador_dpp.emissor_direto import CredencialDPP
+
+        assert CredencialDPP is not None
+
+    def test_reciclagem_report_from_payload(self):
+        """RelatorioReciclagemHTML generates valid HTML from a reciclagem payload."""
+        from verificador_dpp._payloads import ATORES
+        from verificador_dpp.modelos import CredencialDPP
+        from verificador_dpp.parser_credencial import classificar_campos
+        from verificador_dpp.relatorio_reciclagem_html import RelatorioReciclagemHTML
+
+        env = {
+            "ATOR1_TX": "tx_origem_abc123",
+            "ATOR2_TX": "tx_celula_def456",
+            "ATOR3_TX": "tx_pack_ghi789",
+        }
+        payload, _, _ = ATORES["reciclagem"](env)
+        referencias, data_hashes, materiais = classificar_campos(payload)
+        cred = CredencialDPP(
+            nome=payload.get("name"),
+            emitente=payload.get("issuer"),
+            gtin=payload.get("gtin"),
+            origem=payload.get("origin"),
+            fabricado_em=payload.get("manufactured"),
+            pegada_carbono=payload.get("carbon_footprint"),
+            conteudo_reciclado=payload.get("recycled_content"),
+            materiais=materiais,
+            referencias=referencias,
+            data_hashes=data_hashes,
+            tx_hash="fake_tx_hash_reciclagem",
+        )
+        html = RelatorioReciclagemHTML().gerar(cred)
+
+        # Verify it's valid HTML with the teal theme
+        assert "<!DOCTYPE html>" in html
+        assert "#004d40" in html
+        # Verify it contains the emitter name
+        assert "RecicLar" in html
+        # Verify materials section is present
+        assert "Materiais Recuperados" in html
+        # Verify reverse traceability section is present
+        assert "Rastreabilidade Reversa" in html
+        # Verify reference tx hashes appear
+        assert "tx_origem_abc123" in html
+        assert "tx_celula_def456" in html
+        assert "tx_pack_ghi789" in html

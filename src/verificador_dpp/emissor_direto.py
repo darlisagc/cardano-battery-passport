@@ -48,7 +48,10 @@ from pycardano import (
 )
 
 from ._payloads import ATORES, PROXIMO_ATOR_ENV, data_hash
+from .modelos import CredencialDPP
+from .parser_credencial import classificar_campos
 from .relatorio_emissao_html import RelatorioEmissaoHTML
+from .relatorio_reciclagem_html import RelatorioReciclagemHTML
 from .wallet import carregar_carteira
 
 # Label de metadata Cardano — inteiro arbitrario >= 1 que identifica
@@ -218,6 +221,30 @@ def main() -> None:
         html_path = f.name
     print(f"\nRelatorio de emissao salvo em: {html_path}")
     webbrowser.open(f"file://{html_path}")
+
+    if args.ator == "reciclagem":
+        referencias, data_hashes, materiais = classificar_campos(payload)
+        cred = CredencialDPP(
+            nome=payload.get("name"),
+            emitente=payload.get("issuer"),
+            gtin=payload.get("gtin"),
+            origem=payload.get("origin"),
+            fabricado_em=payload.get("manufactured"),
+            pegada_carbono=payload.get("carbon_footprint"),
+            conteudo_reciclado=payload.get("recycled_content"),
+            materiais=materiais,
+            referencias=referencias,
+            data_hashes=data_hashes,
+            tx_hash=tx_hash,
+        )
+        html_recicl = RelatorioReciclagemHTML().gerar(cred)
+        with tempfile.NamedTemporaryFile(
+            suffix=".html", delete=False, mode="w", encoding="utf-8"
+        ) as f:
+            f.write(html_recicl)
+            html_recicl_path = f.name
+        print(f"Relatorio de reciclagem salvo em: {html_recicl_path}")
+        webbrowser.open(f"file://{html_recicl_path}")
 
 
 if __name__ == "__main__":
