@@ -519,8 +519,8 @@ uma credencial para a proxima como hints para acelerar o lookup UVerify.
 | `parser_credencial.py` | Parsing | Converte metadata bruta do Blockfrost em objetos `CredencialDPP` estruturados. Trata o template `digitalProductPassport` e classifica campos por prefixo (`ref_*`, `mat_*`, `uv_*`). |
 | `relatorio_passaporte.py` | Relatorio | Gera o relatorio textual do passaporte no terminal apos a verificacao. |
 | `relatorio_html.py` | Relatorio | Gera relatorio HTML com cards coloridos para cada etapa da cadeia (verde=origem, azul=celulas, amarelo=pack, teal=reciclagem). |
-| `relatorio_emissao_html.py` | Relatorio | Gera recibo HTML apos cada emissao individual, com link para a transacao no Cexplorer. |
-| `relatorio_reciclagem_html.py` | Relatorio | Gera relatorio HTML dedicado para a credencial de reciclagem (Ator 4). |
+| `relatorio_emissao_html.py` | Relatorio | Recibo HTML pos-emissao (todos os atores), com link Cexplorer da tx. |
+| `relatorio_reciclagem_html.py` | Relatorio | Relatorio HTML adicional (so `--ator reciclagem`): materiais recuperados, rastreabilidade reversa e fluxo de ciclo de vida. |
 | `_html_utils.py` | Relatorio | Helpers compartilhados: escape de HTML e geracao de links Cexplorer preprod. |
 
 ---
