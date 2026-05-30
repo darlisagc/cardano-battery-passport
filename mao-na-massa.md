@@ -359,7 +359,7 @@ Existem **duas formas distintas** de ancorar um DPP em Cardano, que definem **on
 | Dependência externa | Nenhuma — qualquer indexador Cardano | UVerify precisa estar no ar para resolver o payload |
 | Auditabilidade | Total, sem terceiros | Tamper-evidence garantida pelo hash; conteúdo depende do UVerify |
 
-> Para mais detalhes sobre os padrões, veja o repositório [cardano-dpp-standards](https://github.com/cardano-foundation/cardano-dpp-standards).
+> Para mais detalhes sobre os diferentes designs e implementações de DPP em Cardano, veja o repositório [cardano-dpp-standards](https://github.com/cardano-foundation/cardano-dpp-standards).
 
 **Quando usar cada um:**
 
@@ -377,7 +377,7 @@ Esta seção mostra **três formas** de emitir credenciais DPP em Cardano prepro
 | Opção | Como funciona | Dependência principal |
 | :---- | :---- | :---- |
 | **A — Python direto** | Você constrói a transação do zero com `TransactionBuilder` e anexa o payload DPP como metadata nativa | PyCardano \+ Blockfrost |
-| **B — Python via SDK** | O SDK do UVerify monta a transação contra a API do mesmo; seu código só assina | `uverify-sdk` \+ Blockfrost |
+| **B — Python via SDK** | O SDK do UVerify monta a transação contra a API do mesmo; seu código só assina | `uverify-sdk` \+ PyCardano \+ Blockfrost |
 | **C — UI UVerify** | Browser \+ carteira; sem código — você preenche o formulário em `app.preprod.uverify.io` | apenas browser |
 
 💡 Misture as três opções livremente — o `verificador` percorre a cadeia independente do método de emissão usado.
