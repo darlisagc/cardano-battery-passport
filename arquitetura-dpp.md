@@ -190,7 +190,6 @@ flowchart TB
     style OpcaoC fill:#e2d5f1,stroke:#6f42c1
 ```
 
-> **Relatorios pos-emissao:** Apos a emissao (Opcoes A e B), o script gera automaticamente um recibo HTML local com os dados da credencial e link Cexplorer. Quando `--ator reciclagem`, um relatorio adicional e gerado com materiais recuperados e rastreabilidade reversa.
 
 ### Analogias para cada opcao
 
