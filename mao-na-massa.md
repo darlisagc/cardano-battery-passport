@@ -92,7 +92,7 @@ A ④ reciclagem referencia **todas** as anteriores — após reciclar, o pack d
 | **O que ensina** | Tx-building e leitura de metadata bruta | Atalho via SDK — abstrai a complexidade | UX final do UVerify (o que o usuário vê) |
 | **Dependências** | `pycardano` + `blockfrost-python` | `uverify-sdk` + `blockfrost-python` + PyCardano | Apenas browser + carteira preprod |
 
-💡 **Recomendação:** caminho misto sugerido — atores 1 e 2 pela **Opção A** (`emissor_direto`), ator 3 pela **Opção B** (`emissor_sdk`), ator 4 pela **Opção C** (UI). Para verificar a cadeia toda, use o `verificador` (Seção 3.5)  
+💡 **Caminho do workshop:** atores 1 e 2 pela **Opção A** (`emissor_direto`), ator 3 pela **Opção B** (`emissor_sdk`), ator 4 pela **Opção C** (UI). Para verificar a cadeia toda, use o `verificador` (Seção 3).
 
 Estado do .env ao longo do workshop
 
