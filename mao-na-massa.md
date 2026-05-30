@@ -496,7 +496,7 @@ uv run python -m verificador_dpp.emissor_direto --ator celula
 
 💡 **`.env` atualizado automaticamente.** Após cada emissão, o script grava o `tx_hash` e `data_hash` direto no `.env` — você não precisa copiar/colar entre os comandos. A última linha do output mostra exatamente quais chaves foram escritas (`ATOR1_TX=…`, `TX_HASH_PACK=…`, etc.).
 
-💡 **Relatório HTML.** Após cada emissão bem-sucedida, o script gera um recibo HTML e abre automaticamente no navegador — com os dados da credencial emitida e link para a transação no Cexplorer. Quando `--ator reciclagem`, um relatório adicional dedicado é gerado com tema teal, materiais recuperados e rastreabilidade reversa (referências a todos os atores anteriores da cadeia).
+💡 **Relatório HTML.** Após cada emissão bem-sucedida, o script gera um recibo HTML e abre automaticamente no navegador — com os dados da credencial emitida e link para a transação no Cexplorer. Quando `--ator reciclagem`, um relatório adicional dedicado é gerado com materiais recuperados e rastreabilidade reversa (referências a todos os atores anteriores da cadeia).
 
 💡 **Label de metadata.** Usamos `1990` (escolha arbitrária, homenagem à Lei do Consumidor brasileira). Cardano metadata aceita qualquer inteiro \>= 1; o `verificador` escaneia **todos** os labels procurando o campo `uverify_template_id` (nossa convenção de schema — ver 1.6), então o número escolhido não afeta a verificação. Você poderia trocar o schema por outro DPP — desde que o verificador conheça o novo formato.
 
@@ -656,7 +656,7 @@ uv run python -m verificador_dpp.emissor_sdk --ator reciclagem
 
 💡 **`.env` atualizado automaticamente** — igual ao `emissor_direto`. Cada emissão grava `ATOR<N>_TX` e `DATA_HASH` no `.env`; quando o ator é `pack`, também grava `TX_HASH_PACK` (este último é usado pelo `verificador` como hint inicial quando o pack veio de B/C).
 
-💡 **Relatório HTML.** Igual à Opção A — após cada emissão, um recibo HTML é gerado e aberto automaticamente no navegador. Quando `--ator reciclagem`, um relatório adicional dedicado é gerado com tema teal, materiais recuperados e rastreabilidade reversa.
+💡 **Relatório HTML.** Igual à Opção A — após cada emissão, um recibo HTML é gerado e aberto automaticamente no navegador. Quando `--ator reciclagem`, um relatório adicional dedicado é gerado com materiais recuperados e rastreabilidade reversa.
 
 💡 **Intervalo entre emissões.** O `emissor_sdk` agora aguarda automaticamente a confirmação on-chain antes de retornar (`_aguardar_confirmacao`), então você pode rodar os atores em sequência sem esperas manuais. Se por algum motivo a confirmação expirar (timeout de 60s), o retry com backoff trata erros transientes como `PENDING_TRANSACTION` ou `BadInputs`.
 
@@ -821,7 +821,7 @@ A credencial do Ator 4 já foi emitida na Seção 2 quando você rodou `--ator r
 
 A diferença em relação aos outros atores: a recicladora referencia **todas** as credenciais anteriores, não só a imediatamente prévia. Cada referência inclui o par `ref_*_tx` (tx hash) + `ref_*_data_hash` (sha256(gtin+serial) do ator referenciado) — o data_hash é essencial para que o verificador consiga localizar credenciais emitidas via UVerify (Opções B/C). Após a reciclagem o pack deixa de existir; o DPP de reciclagem se torna o ponteiro definitivo para tudo o que veio antes.
 
-💡 **Relatório de reciclagem dedicado.** Além do recibo HTML padrão (gerado para todos os atores), a emissão de `--ator reciclagem` gera automaticamente um relatório HTML adicional com tema teal, seção de **materiais recuperados** e **rastreabilidade reversa** — mostrando os links Cexplorer para todas as credenciais anteriores da cadeia (pack, célula, origem).
+💡 **Relatório de reciclagem dedicado.** Além do recibo HTML padrão (gerado para todos os atores), a emissão de `--ator reciclagem` gera automaticamente um relatório HTML adicional com seção de **materiais recuperados** e **rastreabilidade reversa** — mostrando os links Cexplorer para todas as credenciais anteriores da cadeia (pack, célula, origem).
 
 ### 4.3 Ciclo completo — diagrama
 
