@@ -195,7 +195,7 @@ flowchart TB
 
 | Opcao | Analogia |
 |-------|----------|
-| **A — PyCardano Direto** | Como **enviar uma carta registrada para si mesmo**: voce escreve o documento inteiro, coloca no envelope, vai pessoalmente ao correio e despacha. Tudo esta dentro do envelope (on-chain). |
+| **A — PyCardano Direto** | Como **registrar um documento direto no cartorio**: voce escreve o documento inteiro, vai pessoalmente ao cartorio e grava tudo na ficha publica. O documento completo fica visivel para qualquer pessoa (on-chain). |
 | **B — UVerify SDK** | Como **usar um despachante**: voce entrega os dados ao despachante (UVerify SDK), ele prepara a documentacao, voce assina, e ele envia ao cartorio. O cartorio guarda apenas o protocolo; o documento completo fica no escritorio do despachante. |
 | **C — UVerify Web UI** | Como **usar o site do cartorio online**: voce preenche um formulario no navegador, assina digitalmente, e o servico cuida do resto. A forma mais simples, porem com menos controle programatico. |
 
