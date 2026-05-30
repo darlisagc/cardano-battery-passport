@@ -510,20 +510,23 @@ O `emissor_sdk.py` implementa um fluxo com 5 camadas que lidam automaticamente c
 ```
 [emissor_sdk.py]              [UVerify API]                [Cardano preprod]
      |                              |                              |
-     |--- get_user_info() --------->|  (1) verificar estado        |
-     |<-- estado ok / opt_out ------|                              |
+     |                              |                     [Bootstrap Datum]
+     |                              |                       (config global)
+     |                              |                              |
+     |--- get_user_info() --------->|--- ler State Datum --------->|
+     |<-- estado ok / opt_out ------|<-- State Datum (ou criar) ---|
      |                              |                              |
      |--- prepare-collateral ------>|  (2) garantir >= 5 ADA       |
      |<-- ok / criar split tx ------|      colateral para Plutus   |
      |                              |                              |
-     |--- build_transaction() ----->|  (3) montar tx               |
+     |--- build_transaction() ----->|--- ler State Datum --------->|
      |<-- unsigned_tx + status -----|      (trata COLLATERAL/      |
      |                              |       PENDING se necessario) |
      |                              |                              |
    sign_tx callback (PyCardano)     |  (4) assinar                 |
      |                              |                              |
      |-- submit_transaction() ----->|--- submeter na rede -------->|
-     |<--- tx_hash -----------------|                              |
+     |<--- tx_hash -----------------|--- atualizar State Datum --->|
      |                              |                              |
      |  (5) retry com backoff se falhar (5 tentativas, 5s->80s)    |
 ```
